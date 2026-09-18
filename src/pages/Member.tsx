@@ -421,22 +421,22 @@ function Member({
   );
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
         <button
           onClick={onBackHome}
-          className="text-sm font-semibold text-slate-700 mb-6"
+          className="mb-5 inline-flex min-h-10 items-center rounded-lg px-1 text-sm font-semibold text-slate-700 transition hover:text-blue-700"
         >
           ← Back to Home
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               {user.name}
             </h1>
 
-            <p className="text-slate-500 mt-1">
+            <p className="mt-1 text-sm text-slate-500 sm:text-base">
               Personal Expense Dashboard
             </p>
           </div>
@@ -455,7 +455,7 @@ function Member({
 
               if (found) setSelectedMonth(found);
             }}
-            className="bg-white border border-slate-300 rounded-xl px-4 py-3 font-medium outline-none"
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-auto"
           >
             {monthOptions.map((month) => (
               <option
@@ -468,7 +468,7 @@ function Member({
           </select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:mb-8 sm:grid-cols-3 sm:gap-4">
           <SummaryCard
             title="Total Budget Allocated"
             value={formatMoney(totalBudget)}
@@ -489,33 +489,33 @@ function Member({
         </div>
 
         {amountOwedToUser > 0 && (
-          <div className="mb-8 rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 sm:mb-8">
             <p className="font-bold text-red-700">
               You are owed {formatMoney(amountOwedToUser)}
             </p>
-            <p className="text-sm text-red-600 mt-1">
+            <p className="mt-1 text-sm leading-5 text-red-600">
               Your spending has exceeded the budget allocated to you.
               This amount is currently unpaid.
             </p>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-          <h2 className="text-xl font-bold text-slate-900 mb-5">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:mb-8 sm:p-6">
+          <h2 className="mb-4 text-lg font-bold text-slate-900 sm:mb-5 sm:text-xl">
             Spending Summary
           </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
             {categoryTotals.map((item) => (
               <div
                 key={item.category}
-                className="rounded-xl border border-slate-200 p-4"
+                className="rounded-xl border border-slate-200 bg-slate-50/40 p-3 transition sm:p-4"
               >
-                <p className="text-sm text-slate-500">
+                <p className="text-xs font-medium text-slate-500 sm:text-sm">
                   {item.category}
                 </p>
 
-                <p className="text-lg font-bold text-slate-900 mt-2">
+                <p className="mt-1 text-base font-bold text-slate-900 sm:mt-2 sm:text-lg">
                   {formatMoney(item.total)}
                 </p>
               </div>
@@ -523,30 +523,30 @@ function Member({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-5 flex flex-col gap-3 sm:mb-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                 {selectedMonth.label} Spendings
               </h2>
 
-              <p className="text-slate-500 mt-1">
+              <p className="mt-1 text-sm text-slate-500 sm:text-base">
                 Your spending records
               </p>
             </div>
 
             <button
               onClick={openAddModal}
-              className="px-5 py-3 rounded-xl bg-slate-900 text-white font-semibold"
+              className="w-full rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200 sm:w-auto"
             >
               + Add Spending
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="-mx-4 overflow-x-auto px-4 sm:-mx-0 sm:px-0">
+            <table className="w-full min-w-[900px] text-sm">
               <thead>
-                <tr className="border-b text-left text-slate-500">
+                <tr className="border-b border-slate-300 text-left text-slate-500">
                   <th className="py-3">Date</th>
                   <th className="py-3">Description</th>
                   <th className="py-3">Quantity</th>
@@ -584,7 +584,7 @@ function Member({
                         {spending.billFilePath ? (
                           <button
                             onClick={() => void viewBill(spending.billFilePath!)}
-                            className="font-semibold text-slate-900 underline"
+                            className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-800"
                           >
                             View Bill
                           </button>
@@ -593,7 +593,7 @@ function Member({
                         )}
                       </td>
 
-                      <td className="py-4 text-right font-semibold">
+                      <td className="py-4 text-right font-semibold text-slate-900">
                         {formatMoney(spending.amount)}
                       </td>
 
@@ -609,7 +609,7 @@ function Member({
                         <div className="flex justify-end gap-3">
                           <button
                             onClick={() => openEditModal(spending)}
-                            className="font-semibold text-slate-700"
+                            className="font-semibold text-blue-700 transition hover:text-blue-800"
                           >
                             Edit
                           </button>
@@ -640,10 +640,10 @@ function Member({
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-4">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-4 sm:p-6">
+              <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                 {editingId !== null
                   ? "Edit Spending"
                   : "Add Spending"}
@@ -651,15 +651,15 @@ function Member({
 
               <button
                 onClick={closeModal}
-                className="text-slate-400 hover:text-slate-700 text-2xl"
+                className="rounded-lg px-2 py-1 text-2xl leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 ×
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="space-y-4 p-4 sm:space-y-5 sm:p-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Date
                 </label>
 
@@ -669,12 +669,12 @@ function Member({
                   onChange={(event) =>
                     setDate(event.target.value)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Description
                 </label>
 
@@ -684,13 +684,13 @@ function Member({
                   onChange={(event) =>
                     setDescription(event.target.value)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   placeholder="What did you spend on?"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Quantity
                 </label>
 
@@ -700,13 +700,13 @@ function Member({
                   onChange={(event) =>
                     setQuantity(event.target.value)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   placeholder="e.g. 5 kg, 20 liters, 2 bags"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Type
                 </label>
 
@@ -715,7 +715,7 @@ function Member({
                   onChange={(event) =>
                     setType(event.target.value as SpendingType)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   {spendingTypes.map((item) => (
                     <option key={item} value={item}>
@@ -726,7 +726,7 @@ function Member({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Bill / Receipt (Optional)
                 </label>
 
@@ -734,7 +734,7 @@ function Member({
                   type="file"
                   accept="image/*,.pdf"
                   onChange={handleBillFileChange}
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
 
                 {billFile && (
@@ -759,7 +759,7 @@ function Member({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   Amount
                 </label>
 
@@ -770,14 +770,14 @@ function Member({
                   onChange={(event) =>
                     setAmount(event.target.value)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   placeholder="Enter amount"
                 />
               </div>
 
               <button
                 onClick={saveSpending}
-                className="w-full bg-slate-900 text-white rounded-xl py-3 font-semibold"
+                className="w-full rounded-xl bg-blue-700 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
                 {editingId !== null
                   ? "Update Spending"
@@ -801,8 +801,8 @@ function SummaryCard({
   negative?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm">
-      <p className="text-sm text-slate-500">{title}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <p className="text-xs font-medium text-slate-500 sm:text-sm">{title}</p>
 
       <p
         className={`text-2xl font-bold mt-2 ${
