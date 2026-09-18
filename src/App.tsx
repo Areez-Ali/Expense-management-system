@@ -48,6 +48,9 @@ export type Budget = {
   budgetType: "own" | "user_allocation";
   allocatedBy?: string;
   allocatedAt?: string;
+  budgetSlipFilePath?: string;
+  budgetSlipFileName?: string;
+  budgetSlipFileType?: string;
 };
 
 type Page = "home" | "admin" | "member";
@@ -123,7 +126,9 @@ function App() {
     // RLS controls which rows the current user is allowed to receive.
     const { data: budgetRows, error: budgetsError } = await supabase
       .from("budgets")
-      .select("id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at")
+      .select(
+        "id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
+      )
       .order("year", { ascending: true })
       .order("month", { ascending: true });
 
@@ -154,6 +159,9 @@ function App() {
           budgetType: row.budget_type,
           allocatedBy: row.allocated_by ?? undefined,
           allocatedAt: row.allocated_at ?? undefined,
+          budgetSlipFilePath: row.budget_slip_file_path ?? undefined,
+          budgetSlipFileName: row.budget_slip_file_name ?? undefined,
+          budgetSlipFileType: row.budget_slip_file_type ?? undefined,
         })),
       );
 

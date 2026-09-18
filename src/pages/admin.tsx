@@ -22,6 +22,21 @@ async function viewBill(path: string) {
   window.open(data.signedUrl, "_blank", "noopener,noreferrer");
 }
 
+async function viewBudgetSlip(path: string) {
+  const { data, error } = await supabase.storage
+    .from("bills")
+    .createSignedUrl(path, 60);
+
+  if (error || !data?.signedUrl) {
+    alert(
+      `Could not open slip: ${error?.message ?? "File URL was not created."}`,
+    );
+    return;
+  }
+
+  window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+}
+
 function getSafeFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
@@ -143,6 +158,7 @@ function Admin({
   const [budgetAmount, setBudgetAmount] = useState("");
   const [budgetSource, setBudgetSource] = useState("");
   const [budgetUserId, setBudgetUserId] = useState("");
+  const [budgetSlipFile, setBudgetSlipFile] = useState<File | null>(null);
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -346,6 +362,32 @@ function Admin({
     setBudgetSource("");
     setBudgetUserId("");
     setBudgetMode("own");
+    setBudgetSlipFile(null);
+  };
+
+  const handleBudgetSlipFileChange = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0] ?? null;
+
+    if (!file) {
+      setBudgetSlipFile(null);
+      return;
+    }
+
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+      alert("Please select an image or PDF file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Budget slip must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    setBudgetSlipFile(file);
   };
 
   const saveBudget = async () => {
@@ -356,51 +398,20 @@ function Admin({
       return;
     }
 
-    if (budgetMode === "own") {
-      if (!budgetSource.trim()) {
-        alert("Please enter the source.");
-        return;
-      }
+    if (budgetMode === "own" && !budgetSource.trim()) {
+      alert("Please enter the source.");
+      return;
+    }
 
-      const { data, error } = await supabase
-        .from("budgets")
-        .insert({
-          user_id: currentUser.id,
-          month: selectedMonth.month,
-          year: selectedMonth.year,
-          amount,
-          budget_type: "own",
-          source: budgetSource.trim(),
-        })
-        .select("id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at")
-        .single();
+    if (budgetMode === "user" && !budgetUserId) {
+      alert("Please select a user.");
+      return;
+    }
 
-      if (error) {
-        alert(`Could not save budget: ${error.message}`);
-        return;
-      }
+    const userId =
+      budgetMode === "own" ? currentUser.id : budgetUserId;
 
-      const newBudget: Budget = {
-        id: data.id,
-        userId: data.user_id,
-        month: data.month,
-        year: data.year,
-        amount: Number(data.amount),
-        source: data.source ?? undefined,
-        budgetType: data.budget_type,
-        allocatedBy: data.allocated_by ?? undefined,
-        allocatedAt: data.allocated_at ?? undefined,
-      };
-
-      onBudgetsChange((current) => [...current, newBudget]);
-    } else {
-      const userId = budgetUserId;
-
-      if (!userId) {
-        alert("Please select a user.");
-        return;
-      }
-
+    if (budgetMode === "user") {
       const availableToAllocate = Math.max(0, myBalance);
 
       if (amount > availableToAllocate) {
@@ -409,41 +420,70 @@ function Admin({
         );
         return;
       }
-
-      const { data, error } = await supabase
-        .from("budgets")
-        .insert({
-          user_id: userId,
-          month: selectedMonth.month,
-          year: selectedMonth.year,
-          amount,
-          budget_type: "user_allocation",
-          source: null,
-          allocated_by: currentUser.id,
-        })
-        .select("id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at")
-        .single();
-
-      if (error) {
-        alert(`Could not allocate budget: ${error.message}`);
-        return;
-      }
-
-      const newBudget: Budget = {
-        id: data.id,
-        userId: data.user_id,
-        month: data.month,
-        year: data.year,
-        amount: Number(data.amount),
-        source: data.source ?? undefined,
-        budgetType: data.budget_type,
-        allocatedBy: data.allocated_by ?? undefined,
-        allocatedAt: data.allocated_at ?? undefined,
-      };
-
-      onBudgetsChange((current) => [...current, newBudget]);
     }
 
+    let uploadedPath: string | null = null;
+
+    if (budgetSlipFile) {
+      uploadedPath = `${currentUser.id}/budget-slips/${crypto.randomUUID()}-${getSafeFileName(budgetSlipFile.name)}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("bills")
+        .upload(uploadedPath, budgetSlipFile, {
+          contentType: budgetSlipFile.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        alert(`Could not upload budget slip: ${uploadError.message}`);
+        return;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("budgets")
+      .insert({
+        user_id: userId,
+        month: selectedMonth.month,
+        year: selectedMonth.year,
+        amount,
+        budget_type: budgetMode === "own" ? "own" : "user_allocation",
+        source: budgetMode === "own" ? budgetSource.trim() : null,
+        allocated_by:
+          budgetMode === "user" ? currentUser.id : null,
+        budget_slip_file_path: uploadedPath,
+        budget_slip_file_name: budgetSlipFile?.name ?? null,
+        budget_slip_file_type: budgetSlipFile?.type ?? null,
+      })
+      .select(
+        "id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
+      )
+      .single();
+
+    if (error || !data) {
+      if (uploadedPath) {
+        await supabase.storage.from("bills").remove([uploadedPath]);
+      }
+      alert(`Could not save budget: ${error?.message ?? "No data returned."}`);
+      return;
+    }
+
+    const newBudget: Budget = {
+      id: data.id,
+      userId: data.user_id,
+      month: data.month,
+      year: data.year,
+      amount: Number(data.amount),
+      source: data.source ?? undefined,
+      budgetType: data.budget_type,
+      allocatedBy: data.allocated_by ?? undefined,
+      allocatedAt: data.allocated_at ?? undefined,
+      budgetSlipFilePath: data.budget_slip_file_path ?? undefined,
+      budgetSlipFileName: data.budget_slip_file_name ?? undefined,
+      budgetSlipFileType: data.budget_slip_file_type ?? undefined,
+    };
+
+    onBudgetsChange((current) => [...current, newBudget]);
     closeBudgetModal();
   };
 
@@ -494,6 +534,16 @@ function Admin({
     if (error) {
       alert(`Could not delete budget: ${error.message}`);
       return;
+    }
+
+    if (budget.budgetSlipFilePath) {
+      const { error: fileError } = await supabase.storage
+        .from("bills")
+        .remove([budget.budgetSlipFilePath]);
+
+      if (fileError) {
+        console.warn(`Could not delete budget slip: ${fileError.message}`);
+      }
     }
 
     onBudgetsChange((current) =>
@@ -961,7 +1011,7 @@ if (error) {
             </p>
 
             <div className="mt-6 overflow-x-auto -mx-1 px-1">
-              <table className="w-full text-xs sm:text-sm min-w-[650px]">
+              <table className="w-full text-xs sm:text-sm min-w-[760px]">
                 <thead>
                   <tr className="border-b text-left text-slate-500">
                     <th className="py-3">User</th>
@@ -1106,7 +1156,7 @@ if (error) {
             </h2>
 
             <div className="overflow-x-auto -mx-1 px-1">
-              <table className="w-full text-xs sm:text-sm min-w-[650px]">
+              <table className="w-full text-xs sm:text-sm min-w-[760px]">
                 <thead>
                   <tr className="border-b text-left text-slate-500">
                     <th className="py-3">Date</th>
@@ -1479,12 +1529,13 @@ if (error) {
           </div>
 
           <div className="overflow-x-auto -mx-1 px-1">
-            <table className="w-full text-xs sm:text-sm min-w-[650px]">
+            <table className="w-full text-xs sm:text-sm min-w-[760px]">
               <thead>
                 <tr className="border-b text-left text-slate-500">
                   <th className="py-3">User</th>
                   <th className="py-3">Type</th>
                   <th className="py-3">Source</th>
+                  <th className="py-3">Slip</th>
                   <th className="py-3">Date</th>
                   <th className="py-3">Time</th>
                   <th className="py-3 text-right">Amount</th>
@@ -1502,6 +1553,20 @@ if (error) {
                       {budget.budgetType === "user_allocation"
                         ? `From ${getUserName(budget.allocatedBy ?? "")}`
                         : budget.source || "—"}
+                    </td>
+                    <td className="py-4">
+                      {budget.budgetSlipFilePath ? (
+                        <button
+                          onClick={() =>
+                            void viewBudgetSlip(budget.budgetSlipFilePath!)
+                          }
+                          className="font-semibold text-blue-700 hover:text-blue-800 underline"
+                        >
+                          View Slip
+                        </button>
+                      ) : (
+                        <span className="text-slate-400">No Slip</span>
+                      )}
                     </td>
                     <td className="py-4">
                       {budget.allocatedAt
@@ -1752,6 +1817,40 @@ if (error) {
                 />
               </div>
             )}
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Slip / Transaction Screenshot (Optional)
+              </label>
+
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={handleBudgetSlipFileChange}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm"
+              />
+
+              {budgetSlipFile && (
+                <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                  <span className="truncate text-slate-700">
+                    {budgetSlipFile.name}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setBudgetSlipFile(null)}
+                    className="ml-3 font-semibold text-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-400 mt-2">
+                Optional. Upload a transaction slip, bank screenshot, or PDF.
+                Maximum 5 MB.
+              </p>
+            </div>
 
             <button
               onClick={saveBudget}
