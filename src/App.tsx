@@ -262,19 +262,6 @@ function App() {
     if (logoutError) setError(logoutError.message);
   };
 
-  const changePassword = async (newPassword: string): Promise<void> => {
-    if (newPassword.length < 6) {
-      throw new Error("Password must be at least 6 characters.");
-    }
-
-    const { error: passwordError } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (passwordError) {
-      throw new Error(passwordError.message);
-    }
-  };
 
   const updateUser = async (
     userId: string,
@@ -485,7 +472,6 @@ function App() {
         onUpdateUser={updateUser}
         onRemoveUser={removeUser}
         onDeleteUser={deleteUser}
-        onChangePassword={changePassword}
         onBudgetsChange={setBudgets}
         onSpendingsChange={setSpendings}
       />
@@ -506,14 +492,13 @@ function App() {
 
     return (
       <Member
-        user={currentUser}
-        budgets={budgets}
-        spendings={spendings}
-        onBackHome={goHome}
-        onChangePassword={changePassword}
-        onBudgetsChange={setBudgets}
-        onSpendingsChange={setSpendings}
-      />
+  user={currentUser}
+  budgets={budgets}
+  spendings={spendings}
+  onBackHome={goHome}
+  onBudgetsChange={setBudgets}
+  onSpendingsChange={setSpendings}
+/>
     );
   }
 

@@ -46,7 +46,7 @@ type Props = {
   ) => void | Promise<void>;
   onRemoveUser: (userId: string) => void | Promise<void>;
   onDeleteUser: (userId: string) => void | Promise<void>;
-  onChangePassword: (newPassword: string) => void | Promise<void>;
+
 
   onBudgetsChange: Dispatch<SetStateAction<Budget[]>>;
   onSpendingsChange: Dispatch<SetStateAction<Spending[]>>;
@@ -128,7 +128,6 @@ function Admin({
   onUpdateUser,
   onRemoveUser,
   onDeleteUser,
-  onChangePassword,
   onBudgetsChange,
   onSpendingsChange,
 }: Props) {
@@ -675,7 +674,13 @@ function Admin({
       return;
     }
     try {
-      await onChangePassword(newPassword);
+      const { error } = await supabase.auth.updateUser({
+  password: newPassword,
+});
+
+if (error) {
+  throw new Error(error.message);
+}
       alert("Password changed successfully.");
       setNewPassword("");
       setConfirmPassword("");
@@ -933,30 +938,6 @@ function Admin({
     onSpendingsChange((current) =>
       current.filter((item) => item.id !== id),
     );
-  };
-
-  const renderRemaining = (
-    list: Spending[],
-    currentIndex: number,
-    budget: number,
-  ) => {
-    const chronological = [...list].sort((a, b) =>
-      a.date.localeCompare(b.date),
-    );
-
-    const current = list[currentIndex];
-
-    let spent = 0;
-
-    for (const spending of chronological) {
-      spent += spending.amount;
-
-      if (spending.id === current.id) {
-        break;
-      }
-    }
-
-    return budget - spent;
   };
 
   if (selectedCategory) {
