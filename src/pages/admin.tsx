@@ -1369,6 +1369,15 @@ if (error) {
                           <>
                             <button
                               onClick={() =>
+                                setSelectedDetailUserId(user.id)
+                              }
+                              className="px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                            >
+                              View
+                            </button>
+
+                            <button
+                              onClick={() =>
                                 void handleReactivateUser(user)
                               }
                               className="px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
