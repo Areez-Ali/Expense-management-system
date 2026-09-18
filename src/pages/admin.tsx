@@ -159,6 +159,8 @@ function Admin({
   const [budgetSource, setBudgetSource] = useState("");
   const [budgetUserId, setBudgetUserId] = useState("");
   const [budgetSlipFile, setBudgetSlipFile] = useState<File | null>(null);
+  const [editingBudgetId, setEditingBudgetId] = useState<number | null>(null);
+  const [removeBudgetSlip, setRemoveBudgetSlip] = useState(false);
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -358,11 +360,35 @@ function Admin({
 
   const closeBudgetModal = () => {
     setShowBudgetModal(false);
+    setEditingBudgetId(null);
     setBudgetAmount("");
     setBudgetSource("");
     setBudgetUserId("");
     setBudgetMode("own");
     setBudgetSlipFile(null);
+    setRemoveBudgetSlip(false);
+  };
+
+  const openBudgetModal = (budget?: Budget) => {
+    if (budget) {
+      setEditingBudgetId(budget.id);
+      setBudgetMode(budget.budgetType === "own" ? "own" : "user");
+      setBudgetAmount(String(budget.amount));
+      setBudgetSource(budget.source ?? "");
+      setBudgetUserId(budget.userId);
+      setBudgetSlipFile(null);
+      setRemoveBudgetSlip(false);
+    } else {
+      setEditingBudgetId(null);
+      setBudgetMode("own");
+      setBudgetAmount("");
+      setBudgetSource("");
+      setBudgetUserId("");
+      setBudgetSlipFile(null);
+      setRemoveBudgetSlip(false);
+    }
+
+    setShowBudgetModal(true);
   };
 
   const handleBudgetSlipFileChange = (
@@ -411,8 +437,25 @@ function Admin({
     const userId =
       budgetMode === "own" ? currentUser.id : budgetUserId;
 
+    const editingBudget = editingBudgetId !== null
+      ? budgets.find((budget) => budget.id === editingBudgetId)
+      : null;
+
+    if (editingBudgetId !== null && !editingBudget) {
+      alert("Budget allocation was not found.");
+      return;
+    }
+
     if (budgetMode === "user") {
-      const availableToAllocate = Math.max(0, myBalance);
+      let availableToAllocate = Math.max(0, myBalance);
+
+      if (
+        editingBudget &&
+        editingBudget.budgetType === "user_allocation" &&
+        editingBudget.allocatedBy === currentUser.id
+      ) {
+        availableToAllocate += editingBudget.amount;
+      }
 
       if (amount > availableToAllocate) {
         alert(
@@ -438,6 +481,81 @@ function Admin({
         alert(`Could not upload budget slip: ${uploadError.message}`);
         return;
       }
+    }
+
+    if (editingBudget) {
+      const nextSlipPath = removeBudgetSlip
+        ? null
+        : uploadedPath ?? editingBudget.budgetSlipFilePath ?? null;
+      const nextSlipName = removeBudgetSlip
+        ? null
+        : budgetSlipFile?.name ?? editingBudget.budgetSlipFileName ?? null;
+      const nextSlipType = removeBudgetSlip
+        ? null
+        : budgetSlipFile?.type ?? editingBudget.budgetSlipFileType ?? null;
+
+      const { data, error } = await supabase
+        .from("budgets")
+        .update({
+          user_id: userId,
+          amount,
+          budget_type: budgetMode === "own" ? "own" : "user_allocation",
+          source: budgetMode === "own" ? budgetSource.trim() : null,
+          allocated_by:
+            budgetMode === "user" ? currentUser.id : null,
+          budget_slip_file_path: nextSlipPath,
+          budget_slip_file_name: nextSlipName,
+          budget_slip_file_type: nextSlipType,
+        })
+        .eq("id", editingBudget.id)
+        .select(
+          "id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
+        )
+        .single();
+
+      if (error || !data) {
+        if (uploadedPath) {
+          await supabase.storage.from("bills").remove([uploadedPath]);
+        }
+        alert(`Could not update budget: ${error?.message ?? "No data returned."}`);
+        return;
+      }
+
+      if (
+        editingBudget.budgetSlipFilePath &&
+        editingBudget.budgetSlipFilePath !== data.budget_slip_file_path
+      ) {
+        const { error: fileError } = await supabase.storage
+          .from("bills")
+          .remove([editingBudget.budgetSlipFilePath]);
+
+        if (fileError) {
+          console.warn(`Could not delete old budget slip: ${fileError.message}`);
+        }
+      }
+
+      const updatedBudget: Budget = {
+        id: data.id,
+        userId: data.user_id,
+        month: data.month,
+        year: data.year,
+        amount: Number(data.amount),
+        source: data.source ?? undefined,
+        budgetType: data.budget_type,
+        allocatedBy: data.allocated_by ?? undefined,
+        allocatedAt: data.allocated_at ?? undefined,
+        budgetSlipFilePath: data.budget_slip_file_path ?? undefined,
+        budgetSlipFileName: data.budget_slip_file_name ?? undefined,
+        budgetSlipFileType: data.budget_slip_file_type ?? undefined,
+      };
+
+      onBudgetsChange((current) =>
+        current.map((budget) =>
+          budget.id === editingBudget.id ? updatedBudget : budget,
+        ),
+      );
+      closeBudgetModal();
+      return;
     }
 
     const { data, error } = await supabase
@@ -1480,10 +1598,7 @@ if (error) {
                 + Add Spending
               </button>
               <button
-                onClick={() => {
-                  setBudgetMode("own");
-                  setShowBudgetModal(true);
-                }}
+                onClick={() => openBudgetModal()}
                 className="w-full sm:w-auto px-5 py-3 rounded-xl border border-blue-200 bg-white text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
               >
                 + Add Budget
@@ -1585,12 +1700,20 @@ if (error) {
                       {formatMoney(budget.amount)}
                     </td>
                     <td className="py-4 text-right">
-                      <button
-                        onClick={() => deleteBudget(budget.id)}
-                        className="text-red-600 font-semibold"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => openBudgetModal(budget)}
+                          className="text-blue-700 font-semibold"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => void deleteBudget(budget.id)}
+                          className="text-red-600 font-semibold"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1717,9 +1840,11 @@ if (error) {
       {showBudgetModal && (
         <Modal
           title={
-            budgetMode === "own"
-              ? "Add Budget to Myself"
-              : "Allocate Budget to User"
+            editingBudgetId !== null
+              ? "Edit Budget"
+              : budgetMode === "own"
+                ? "Add Budget to Myself"
+                : "Allocate Budget to User"
           }
           onClose={closeBudgetModal}
         >
@@ -1830,6 +1955,24 @@ if (error) {
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm"
               />
 
+              {editingBudgetId !== null &&
+                !budgetSlipFile &&
+                !removeBudgetSlip &&
+                budgets.find((budget) => budget.id === editingBudgetId)?.budgetSlipFileName && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                    <span className="truncate text-slate-700">
+                      Current slip: {budgets.find((budget) => budget.id === editingBudgetId)?.budgetSlipFileName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setRemoveBudgetSlip(true)}
+                      className="ml-3 font-semibold text-red-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
               {budgetSlipFile && (
                 <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
                   <span className="truncate text-slate-700">
@@ -1853,10 +1996,10 @@ if (error) {
             </div>
 
             <button
-              onClick={saveBudget}
+              onClick={() => void saveBudget()}
               className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 font-semibold"
             >
-              Save Budget
+              {editingBudgetId !== null ? "Update Budget" : "Save Budget"}
             </button>
           </div>
         </Modal>
