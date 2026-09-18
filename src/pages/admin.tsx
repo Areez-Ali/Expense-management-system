@@ -942,17 +942,17 @@ if (error) {
 
   if (selectedCategory) {
     return (
-      <div className="min-h-screen bg-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
           <button
             onClick={() => setSelectedCategory(null)}
-            className="text-sm font-semibold text-slate-700 mb-6"
+            className="text-sm font-semibold text-blue-700 hover:text-blue-800 mb-5 sm:mb-6"
           >
             ← Back to Month
           </button>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h1 className="text-2xl font-bold text-slate-900">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
               {selectedCategory}
             </h1>
 
@@ -960,8 +960,8 @@ if (error) {
               {selectedMonth.label}
             </p>
 
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full text-sm min-w-[700px]">
+            <div className="mt-6 overflow-x-auto -mx-1 px-1">
+              <table className="w-full text-xs sm:text-sm min-w-[650px]">
                 <thead>
                   <tr className="border-b text-left text-slate-500">
                     <th className="py-3">User</th>
@@ -1032,17 +1032,17 @@ if (error) {
     }));
 
     return (
-      <div className="min-h-screen bg-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="min-h-screen bg-slate-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
           <button
             onClick={() => setSelectedDetailUserId(null)}
-            className="text-sm font-semibold text-slate-700 mb-6"
+            className="text-sm font-semibold text-blue-700 hover:text-blue-800 mb-5 sm:mb-6"
           >
             ← Back to Month
           </button>
 
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
               {selectedDetailUser.name}
             </h1>
 
@@ -1077,8 +1077,8 @@ if (error) {
             />
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-5">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-lg sm:text-xl font-bold text-slate-900 mb-4 sm:mb-5">
               Category Summary
             </h2>
 
@@ -1100,13 +1100,13 @@ if (error) {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 mb-5">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80">
+            <h2 className="text-lg sm:text-lg sm:text-xl font-bold text-slate-900 mb-4 sm:mb-5">
               Spending
             </h2>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[700px]">
+            <div className="overflow-x-auto -mx-1 px-1">
+              <table className="w-full text-xs sm:text-sm min-w-[650px]">
                 <thead>
                   <tr className="border-b text-left text-slate-500">
                     <th className="py-3">Date</th>
@@ -1187,11 +1187,11 @@ if (error) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
         <button
           onClick={onBackHome}
-          className="text-sm font-semibold text-slate-700 mb-6"
+          className="text-sm font-semibold text-blue-700 hover:text-blue-800 mb-5 sm:mb-6"
         >
           ← Back to Home
         </button>
@@ -1199,11 +1199,11 @@ if (error) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
                 {currentUser.name}
               </h1>
 
-              <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold">
+              <span className="px-3 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700 text-xs font-semibold">
                 Admin
               </span>
             </div>
@@ -1214,7 +1214,7 @@ if (error) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <button onClick={() => setShowPasswordModal(true)} className="bg-white border border-slate-300 rounded-xl px-4 py-3 font-semibold">Change Password</button>
+            <button onClick={() => setShowPasswordModal(true)} className="w-full sm:w-auto bg-white border border-slate-200 rounded-xl px-4 py-3 font-semibold text-slate-700 hover:border-blue-300 hover:bg-blue-50/40 transition-colors">Change Password</button>
             <select
             value={`${selectedMonth.year}-${selectedMonth.month}`}
             onChange={(event) => {
@@ -1229,7 +1229,7 @@ if (error) {
 
               if (found) setSelectedMonth(found);
             }}
-            className="bg-white border border-slate-300 rounded-xl px-4 py-3 font-medium outline-none"
+            className="bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-medium outline-none"
           >
             {monthOptions.map((month) => (
               <option
@@ -1244,10 +1244,10 @@ if (error) {
         </div>
 
         {/* USER MANAGEMENT */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">
                 User Management
               </h2>
 
@@ -1258,14 +1258,14 @@ if (error) {
 
             <button
               onClick={() => setShowUserModal(true)}
-              className="px-5 py-3 rounded-xl bg-slate-900 text-white font-semibold"
+              className="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-semibold"
             >
               + Add User
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[850px]">
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="border-b text-left text-slate-500">
                   <th className="py-3">Name</th>
@@ -1290,7 +1290,7 @@ if (error) {
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             user.role === "admin"
-                              ? "bg-slate-900 text-white"
+                              ? "bg-blue-600 text-white hover:bg-blue-700"
                               : "bg-slate-100 text-slate-700"
                           }`}
                         >
@@ -1322,14 +1322,14 @@ if (error) {
                     </td>
 
                     <td className="py-4">
-                      <div className="flex justify-end gap-2 flex-wrap">
+                      <div className="flex justify-start sm:justify-end gap-2 flex-wrap">
                         {user.active ? (
                           <>
                             <button
                               onClick={() =>
                                 setSelectedDetailUserId(user.id)
                               }
-                              className="px-3 py-2 rounded-lg border border-slate-300 font-medium"
+                              className="px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
                             >
                               View
                             </button>
@@ -1338,7 +1338,7 @@ if (error) {
                               <>
                                 <button
                                   onClick={() => toggleAdmin(user)}
-                                  className="px-3 py-2 rounded-lg border border-slate-300 font-medium"
+                                  className="px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
                                 >
                                   {user.role === "admin"
                                     ? "Make Member"
@@ -1371,7 +1371,7 @@ if (error) {
                               onClick={() =>
                                 void handleReactivateUser(user)
                               }
-                              className="px-3 py-2 rounded-lg border border-slate-300 font-medium"
+                              className="px-3 py-2 rounded-lg border border-slate-200 bg-white font-medium text-slate-700 hover:border-blue-300 hover:bg-blue-50 transition-colors"
                             >
                               Active
                             </button>
@@ -1402,10 +1402,10 @@ if (error) {
         
 
 {/* BUDGET ALLOCATIONS */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 mb-6 sm:mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">
                 Budget Allocations
               </h2>
               <p className="text-slate-500 mt-1">
@@ -1413,10 +1413,10 @@ if (error) {
               </p>
             </div>
 
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <button
                 onClick={() => openSpendingModal()}
-                className="px-5 py-3 rounded-xl bg-slate-900 text-white font-semibold"
+                className="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-semibold"
               >
                 + Add Spending
               </button>
@@ -1425,7 +1425,7 @@ if (error) {
                   setBudgetMode("own");
                   setShowBudgetModal(true);
                 }}
-                className="px-5 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                className="w-full sm:w-auto px-5 py-3 rounded-xl border border-blue-200 bg-white text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
               >
                 + Add Budget
               </button>
@@ -1469,8 +1469,8 @@ if (error) {
             </p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full text-xs sm:text-sm min-w-[650px]">
               <thead>
                 <tr className="border-b text-left text-slate-500">
                   <th className="py-3">User</th>
@@ -1531,23 +1531,23 @@ if (error) {
         </div>
 
         {/* MONTHLY SUMMARY */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Monthly Summary</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Monthly Summary</h2>
               <p className="text-slate-500 mt-1">Global figures for {selectedMonth.label}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={exportMonthlyReport}
-                className="px-4 py-2 rounded-xl border border-slate-300 font-semibold hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
               >
                 Export CSV
               </button>
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl border border-slate-300 font-semibold hover:bg-slate-50"
+                className="px-4 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
               >
                 Print Report
               </button>
@@ -1592,7 +1592,7 @@ if (error) {
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className="text-left rounded-xl border border-slate-200 p-4 hover:border-slate-400 transition"
+                  className="text-left rounded-xl border border-blue-100 bg-blue-50/30 p-4 hover:border-blue-300 hover:bg-blue-50 transition"
                 >
                   <p className="text-sm text-slate-500">{category}</p>
                   <p className="text-lg font-bold text-slate-900 mt-2">
@@ -1610,26 +1610,26 @@ if (error) {
       
 
 {/* SPENDING FILTERS */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 mb-6 sm:mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
-            <div><h2 className="text-xl font-bold text-slate-900">Spending Filters</h2><p className="text-slate-500 mt-1">Filter spending across users, types, months and dates.</p></div>
+            <div><h2 className="text-lg sm:text-xl font-bold text-slate-900">Spending Filters</h2><p className="text-slate-500 mt-1">Filter spending across users, types, months and dates.</p></div>
             <p className="font-bold text-slate-900">Filtered Total: {formatMoney(filteredTotal)}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className="border border-slate-300 rounded-xl px-4 py-3"><option value="all">All Users</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}{!u.active ? " (Inactive)" : ""}</option>)}</select>
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value as SpendingType | "all")} className="border border-slate-300 rounded-xl px-4 py-3"><option value="all">All Types</option>{spendingTypes.map((t) => <option key={t} value={t}>{t}</option>)}</select>
-            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="border border-slate-300 rounded-xl px-4 py-3">
+            <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"><option value="all">All Users</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}{!u.active ? " (Inactive)" : ""}</option>)}</select>
+            <select value={filterType} onChange={(e) => setFilterType(e.target.value as SpendingType | "all")} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"><option value="all">All Types</option>{spendingTypes.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
               <option value="selected">Selected Month ({selectedMonth.label})</option>
               <option value="all">All Months</option>
               {monthOptions.map((month) => (
                 <option key={`filter-${month.year}-${month.month}`} value={`${month.year}-${month.month}`}>{month.label}</option>
               ))}
             </select>
-            <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="border border-slate-300 rounded-xl px-4 py-3" />
-            <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="border border-slate-300 rounded-xl px-4 py-3" />
+            <input type="date" value={filterFromDate} onChange={(e) => setFilterFromDate(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
+            <input type="date" value={filterToDate} onChange={(e) => setFilterToDate(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
           </div>
-          <div className="overflow-x-auto mt-6">
-            <table className="w-full text-sm min-w-[900px]">
+          <div className="overflow-x-auto -mx-1 px-1 mt-6">
+            <table className="w-full text-sm min-w-[820px]">
               <thead><tr className="border-b text-left text-slate-500"><th className="py-3">User</th><th className="py-3">Date</th><th className="py-3">Description</th><th className="py-3">Quantity</th><th className="py-3">Type</th><th className="py-3">Bill</th><th className="py-3 text-right">Amount</th></tr></thead>
               <tbody>{filteredSpendings.map((spending) => <tr key={spending.id} className="border-b last:border-0"><td className="py-3 font-semibold">{getUserName(spending.userId)}</td><td className="py-3">{spending.date}</td><td className="py-3">{spending.description}</td><td className="py-3">{spending.quantity}</td><td className="py-3">{spending.type}</td><td className="py-3">{spending.billFilePath ? <button onClick={() => void viewBill(spending.billFilePath!)} className="underline font-semibold">View Bill</button> : <span className="text-slate-400">No Bill</span>}</td><td className="py-3 text-right font-semibold">{formatMoney(spending.amount)}</td></tr>)}</tbody>
             </table>
@@ -1660,7 +1660,7 @@ if (error) {
                   onClick={() => setBudgetMode("own")}
                   className={`p-3 rounded-xl border font-semibold ${
                     budgetMode === "own"
-                      ? "bg-slate-900 text-white"
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
                       : "bg-white text-slate-700"
                   }`}
                 >
@@ -1671,7 +1671,7 @@ if (error) {
                   onClick={() => setBudgetMode("user")}
                   className={`p-3 rounded-xl border font-semibold ${
                     budgetMode === "user"
-                      ? "bg-slate-900 text-white"
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
                       : "bg-white text-slate-700"
                   }`}
                 >
@@ -1691,7 +1691,7 @@ if (error) {
                   onChange={(event) =>
                     setBudgetUserId(event.target.value)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="">Select user</option>
 
@@ -1721,7 +1721,7 @@ if (error) {
                 onChange={(event) =>
                   setBudgetAmount(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="Enter amount"
               />
             </div>
@@ -1738,7 +1738,7 @@ if (error) {
                   onChange={(event) =>
                     setBudgetSource(event.target.value)
                   }
-                  className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   placeholder="e.g. Salary, Business, Cash"
                 />
               </div>
@@ -1746,7 +1746,7 @@ if (error) {
 
             <button
               onClick={saveBudget}
-              className="w-full bg-slate-900 text-white rounded-xl py-3 font-semibold"
+              className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 font-semibold"
             >
               Save Budget
             </button>
@@ -1757,9 +1757,9 @@ if (error) {
       {showPasswordModal && (
         <Modal title="Change Password" onClose={() => setShowPasswordModal(false)}>
           <div className="space-y-5">
-            <div><label className="block text-sm font-semibold text-slate-700 mb-2">New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border border-slate-300 rounded-xl px-4 py-3" placeholder="Minimum 6 characters" autoComplete="new-password" /></div>
-            <div><label className="block text-sm font-semibold text-slate-700 mb-2">Confirm New Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border border-slate-300 rounded-xl px-4 py-3" placeholder="Repeat password" autoComplete="new-password" /></div>
-            <button onClick={() => void savePassword()} className="w-full bg-slate-900 text-white rounded-xl py-3 font-semibold">Change Password</button>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-2">New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Minimum 6 characters" autoComplete="new-password" /></div>
+            <div><label className="block text-sm font-semibold text-slate-700 mb-2">Confirm New Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" placeholder="Repeat password" autoComplete="new-password" /></div>
+            <button onClick={() => void savePassword()} className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 font-semibold">Change Password</button>
           </div>
         </Modal>
       )}
@@ -1782,7 +1782,7 @@ if (error) {
                 onChange={(event) =>
                   setNewUserName(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="Enter user name"
                 autoComplete="name"
               />
@@ -1799,7 +1799,7 @@ if (error) {
                 onChange={(event) =>
                   setNewUserEmail(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="Enter user email"
                 autoComplete="email"
               />
@@ -1816,7 +1816,7 @@ if (error) {
                 onChange={(event) =>
                   setNewUserPassword(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="Minimum 6 characters"
                 autoComplete="new-password"
               />
@@ -1837,7 +1837,7 @@ if (error) {
                 onChange={(event) =>
                   setNewUserRole(event.target.value as UserRole)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               >
                 <option value="member">Member</option>
                 <option value="admin">Admin</option>
@@ -1846,7 +1846,7 @@ if (error) {
 
             <button
               onClick={() => void addUser()}
-              className="w-full bg-slate-900 text-white rounded-xl py-3 font-semibold"
+              className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 font-semibold"
             >
               Add User
             </button>
@@ -1876,7 +1876,7 @@ if (error) {
                 onChange={(event) =>
                   setSpendingDate(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               />
             </div>
 
@@ -1891,7 +1891,7 @@ if (error) {
                 onChange={(event) =>
                   setSpendingDescription(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="What did you spend on?"
               />
             </div>
@@ -1907,7 +1907,7 @@ if (error) {
                 onChange={(event) =>
                   setSpendingQuantity(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="e.g. 5 kg, 20 liters, 2 bags"
               />
             </div>
@@ -1924,7 +1924,7 @@ if (error) {
                     event.target.value as SpendingType,
                   )
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               >
                 {spendingTypes.map((type) => (
                   <option key={type} value={type}>
@@ -1943,7 +1943,7 @@ if (error) {
                 type="file"
                 accept="image/*,.pdf"
                 onChange={handleBillFileChange}
-                className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm"
               />
 
               {billFile && (
@@ -1979,14 +1979,14 @@ if (error) {
                 onChange={(event) =>
                   setSpendingAmount(event.target.value)
                 }
-                className="w-full border border-slate-300 rounded-xl px-4 py-3"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                 placeholder="Enter amount"
               />
             </div>
 
             <button
               onClick={saveSpending}
-              className="w-full bg-slate-900 text-white rounded-xl py-3 font-semibold"
+              className="w-full bg-blue-600 text-white hover:bg-blue-700 rounded-xl py-3 font-semibold"
             >
               {editingSpendingId !== null
                 ? "Update Spending"
@@ -2010,7 +2010,7 @@ function SummaryCard({
   negative?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-5">
+    <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-white to-blue-50/40 p-4 sm:p-5">
       <p className="text-sm text-slate-500">{title}</p>
 
       <p
@@ -2034,10 +2034,10 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-bold text-slate-900">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] overflow-y-auto border border-slate-200">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200 bg-blue-50/40">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900">
             {title}
           </h2>
 
@@ -2049,7 +2049,7 @@ function Modal({
           </button>
         </div>
 
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
