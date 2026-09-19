@@ -808,28 +808,590 @@ function Admin({
   };
 
   const exportMonthlyReport = () => {
-    const rows = [
-      ["User", "Date", "Description", "Quantity", "Type", "Amount"],
-      ...monthSpendings.map((item) => [
-        getUserName(item.userId),
-        item.date,
-        item.description,
-        item.quantity,
-        item.type,
-        String(item.amount),
-      ]),
-    ];
+    const csvRows: string[][] = [];
 
-    const csv = rows
-      .map((row) => row.map((value) => `"${value.replaceAll('"', '""')}"`).join(","))
+    const addSectionTitle = (title: string) => {
+      csvRows.push([title]);
+      csvRows.push([]);
+    };
+
+    const addBlankRow = () => {
+      csvRows.push([]);
+    };
+
+    const addTable = (headers: string[], rows: string[][]) => {
+      csvRows.push(headers);
+      csvRows.push(...rows);
+      addBlankRow();
+    };
+
+    // 1. Budget Allocation
+    addSectionTitle(`BUDGET ALLOCATION — ${selectedMonth.label}`);
+
+    const budgetRows = monthBudgets
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.allocatedAt ? new Date(a.allocatedAt).getTime() : 0;
+        const bTime = b.allocatedAt ? new Date(b.allocatedAt).getTime() : 0;
+        return aTime - bTime;
+      })
+      .map((budget) => [
+        getUserName(budget.userId),
+        budget.budgetType === "own" ? "Own Budget" : "User Allocation",
+        budget.budgetType === "user_allocation"
+          ? `From ${getUserName(budget.allocatedBy ?? "")}`
+          : budget.source || "—",
+        budget.allocatedAt
+          ? new Date(budget.allocatedAt).toLocaleDateString("en-PK")
+          : "—",
+        budget.allocatedAt
+          ? new Date(budget.allocatedAt).toLocaleTimeString("en-PK", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "—",
+        String(budget.amount),
+        budget.budgetSlipFileName || "No Slip",
+      ]);
+
+    addTable(
+      ["User", "Budget Type", "Source", "Date", "Time", "Amount", "Slip"],
+      budgetRows,
+    );
+
+    // 2. Monthly Summary
+    addSectionTitle(`MONTHLY SUMMARY — ${selectedMonth.label}`);
+
+    csvRows.push(["Metric", "Amount"]);
+    csvRows.push(["Total Budget", String(totalBudget)]);
+    csvRows.push(["Total Spendings", String(totalSpendings)]);
+    csvRows.push(["Balance", String(globalBalance)]);
+    csvRows.push([
+      "Total Amount Owed to Users",
+      String(
+        users.reduce(
+          (sum, user) => sum + getUserFinancials(user.id).debt,
+          0,
+        ),
+      ),
+    ]);
+    addBlankRow();
+
+    csvRows.push(["SPENDING BY CATEGORY"]);
+    csvRows.push(["Category", "Amount"]);
+
+    globalCategories.forEach((category) => {
+      csvRows.push([category, String(categoryTotal(category))]);
+    });
+
+    addBlankRow();
+
+    // 3. Separate spending report for every user
+    users.forEach((user) => {
+      const financials = getUserFinancials(user.id);
+      const userSpendings = monthSpendings
+        .filter((spending) => spending.userId === user.id)
+        .slice()
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      addSectionTitle(`SPENDING — ${user.name}`);
+
+      csvRows.push(["User", user.name]);
+      csvRows.push(["Total Budget", String(financials.budget)]);
+      csvRows.push(["Total Spendings", String(financials.spending)]);
+      csvRows.push(["Balance", String(financials.balance)]);
+      csvRows.push(["Amount Owed to User", String(financials.debt)]);
+      addBlankRow();
+
+      csvRows.push(["CATEGORY SUMMARY"]);
+      csvRows.push(["Category", "Amount"]);
+
+      spendingTypes.forEach((category) => {
+        const categoryAmount = userSpendings
+          .filter((spending) => spending.type === category)
+          .reduce((sum, spending) => sum + spending.amount, 0);
+
+        csvRows.push([category, String(categoryAmount)]);
+      });
+
+      addBlankRow();
+
+      csvRows.push([
+        "Date",
+        "Description",
+        "Quantity",
+        "Type",
+        "Amount",
+        "Bill",
+      ]);
+
+      userSpendings.forEach((spending) => {
+        csvRows.push([
+          spending.date,
+          spending.description,
+          spending.quantity,
+          spending.type,
+          String(spending.amount),
+          spending.billFileName || "No Bill",
+        ]);
+      });
+
+      addBlankRow();
+    });
+
+    const csv = csvRows
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+          .join(","),
+      )
       .join("\n");
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `expense-report-${selectedMonth.year}-${String(selectedMonth.month).padStart(2, "0")}.csv`;
+    link.download = `Expense Report ${selectedMonth.label}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const printMonthlyReport = () => {
+    const printWindow = window.open("", "_blank", "width=1000,height=800");
+
+    if (!printWindow) {
+      alert("Please allow pop-ups to print the report.");
+      return;
+    }
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const money = (value: number) => formatMoney(value);
+
+    const formatDate = (value?: string) =>
+      value
+        ? new Date(value).toLocaleDateString("en-PK")
+        : "—";
+
+    const formatTime = (value?: string) =>
+      value
+        ? new Date(value).toLocaleTimeString("en-PK", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "—";
+
+    const totalOwed = users.reduce(
+      (sum, user) => sum + getUserFinancials(user.id).debt,
+      0,
+    );
+
+    const budgetRows = monthBudgets
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.allocatedAt ? new Date(a.allocatedAt).getTime() : 0;
+        const bTime = b.allocatedAt ? new Date(b.allocatedAt).getTime() : 0;
+        return aTime - bTime;
+      })
+      .map(
+        (budget) => `
+          <tr>
+            <td>${escapeHtml(getUserName(budget.userId))}</td>
+            <td>${escapeHtml(
+              budget.budgetType === "own" ? "Own Budget" : "User Allocation",
+            )}</td>
+            <td>${escapeHtml(
+              budget.budgetType === "user_allocation"
+                ? `From ${getUserName(budget.allocatedBy ?? "")}`
+                : budget.source || "—",
+            )}</td>
+            <td>${escapeHtml(formatDate(budget.allocatedAt))}</td>
+            <td>${escapeHtml(formatTime(budget.allocatedAt))}</td>
+            <td class="amount">${escapeHtml(money(budget.amount))}</td>
+            <td>${escapeHtml(budget.budgetSlipFileName || "No Slip")}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    const globalCategoryRows = globalCategories
+      .map(
+        (category) => `
+          <tr>
+            <td>${escapeHtml(category)}</td>
+            <td class="amount">${escapeHtml(money(categoryTotal(category)))}</td>
+          </tr>
+        `,
+      )
+      .join("");
+
+    const userSections = users
+      .map((user) => {
+        const financials = getUserFinancials(user.id);
+
+        const userSpendings = monthSpendings
+          .filter((spending) => spending.userId === user.id)
+          .slice()
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        const userCategoryRows = spendingTypes
+          .map((category) => {
+            const categoryAmount = userSpendings
+              .filter((spending) => spending.type === category)
+              .reduce((sum, spending) => sum + spending.amount, 0);
+
+            return `
+              <tr>
+                <td>${escapeHtml(category)}</td>
+                <td class="amount">${escapeHtml(money(categoryAmount))}</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        const spendingRows =
+          userSpendings.length > 0
+            ? userSpendings
+                .map(
+                  (spending) => `
+                    <tr>
+                      <td>${escapeHtml(spending.date)}</td>
+                      <td>${escapeHtml(spending.description)}</td>
+                      <td>${escapeHtml(spending.quantity)}</td>
+                      <td>${escapeHtml(spending.type)}</td>
+                      <td class="amount">${escapeHtml(money(spending.amount))}</td>
+                      <td>${escapeHtml(spending.billFileName || "No Bill")}</td>
+                    </tr>
+                  `,
+                )
+                .join("")
+            : `
+                <tr>
+                  <td colspan="6" class="empty">No spending recorded for this month.</td>
+                </tr>
+              `;
+
+        return `
+          <section class="report-section user-section">
+            <div class="section-heading">
+              <h2>${escapeHtml(user.name)} — ${escapeHtml(selectedMonth.label)}</h2>
+              <p>Individual financial report</p>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-box">
+                <span>Total Budget</span>
+                <strong>${escapeHtml(money(financials.budget))}</strong>
+              </div>
+              <div class="summary-box">
+                <span>Total Spendings</span>
+                <strong>${escapeHtml(money(financials.spending))}</strong>
+              </div>
+              <div class="summary-box">
+                <span>${financials.balance < 0 ? "Amount Owed to User" : "Balance"}</span>
+                <strong class="${financials.balance < 0 ? "negative" : ""}">
+                  ${escapeHtml(
+                    money(
+                      financials.balance < 0
+                        ? Math.abs(financials.balance)
+                        : financials.balance,
+                    ),
+                  )}
+                </strong>
+              </div>
+            </div>
+
+            <h3>Category Summary</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th class="amount">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${userCategoryRows}
+              </tbody>
+            </table>
+
+            <h3>Spending Details</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Quantity</th>
+                  <th>Type</th>
+                  <th class="amount">Amount</th>
+                  <th>Bill</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${spendingRows}
+              </tbody>
+            </table>
+          </section>
+        `;
+      })
+      .join("");
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <title>Expense Report ${escapeHtml(selectedMonth.label)}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 14mm;
+            }
+
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              color: #0f172a;
+              background: white;
+              font-family: Arial, Helvetica, sans-serif;
+              font-size: 11px;
+              line-height: 1.45;
+            }
+
+            .report {
+              width: 100%;
+            }
+
+            .report-header {
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 12px;
+              margin-bottom: 20px;
+            }
+
+            .report-header h1 {
+              margin: 0;
+              font-size: 24px;
+            }
+
+            .report-header p {
+              margin: 4px 0 0;
+              color: #475569;
+              font-size: 13px;
+            }
+
+            .report-section {
+              margin-bottom: 24px;
+            }
+
+            .page-section {
+              break-before: page;
+              page-break-before: always;
+            }
+
+            .user-section {
+              break-before: page;
+              page-break-before: always;
+            }
+
+            .section-heading {
+              margin-bottom: 14px;
+            }
+
+            .section-heading h2 {
+              margin: 0;
+              font-size: 18px;
+            }
+
+            .section-heading p {
+              margin: 3px 0 0;
+              color: #64748b;
+            }
+
+            h3 {
+              margin: 20px 0 8px;
+              font-size: 14px;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 0 0 16px;
+              page-break-inside: auto;
+            }
+
+            thead {
+              display: table-header-group;
+            }
+
+            tr {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+
+            th,
+            td {
+              border: 1px solid #cbd5e1;
+              padding: 6px 7px;
+              text-align: left;
+              vertical-align: top;
+              word-break: break-word;
+            }
+
+            th {
+              background: #e2e8f0;
+              font-weight: 700;
+            }
+
+            .amount {
+              text-align: right;
+              white-space: nowrap;
+            }
+
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 10px;
+              margin: 14px 0 20px;
+            }
+
+            .summary-box {
+              border: 1px solid #cbd5e1;
+              padding: 10px;
+              border-radius: 6px;
+            }
+
+            .summary-box span {
+              display: block;
+              color: #64748b;
+              font-size: 10px;
+            }
+
+            .summary-box strong {
+              display: block;
+              margin-top: 4px;
+              font-size: 15px;
+            }
+
+            .negative {
+              color: #dc2626;
+            }
+
+            .empty {
+              text-align: center;
+              color: #64748b;
+              padding: 14px;
+            }
+
+            @media print {
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+
+              .report-section {
+                break-inside: auto;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="report">
+            <header class="report-header">
+              <h1>Expense Report — ${escapeHtml(selectedMonth.label)}</h1>
+              <p>Generated from the Expense Management System</p>
+            </header>
+
+            <section class="report-section">
+              <div class="section-heading">
+                <h2>1. Budget Allocation</h2>
+                <p>All budget entries recorded for ${escapeHtml(selectedMonth.label)}</p>
+              </div>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Budget Type</th>
+                    <th>Source</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th class="amount">Amount</th>
+                    <th>Slip</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${
+                    budgetRows ||
+                    `<tr><td colspan="7" class="empty">No budgets recorded for this month.</td></tr>`
+                  }
+                </tbody>
+              </table>
+            </section>
+
+            <section class="report-section page-section">
+              <div class="section-heading">
+                <h2>2. Monthly Summary</h2>
+                <p>${escapeHtml(selectedMonth.label)}</p>
+              </div>
+
+              <div class="summary-grid">
+                <div class="summary-box">
+                  <span>Total Budget</span>
+                  <strong>${escapeHtml(money(totalBudget))}</strong>
+                </div>
+                <div class="summary-box">
+                  <span>Total Spendings</span>
+                  <strong>${escapeHtml(money(totalSpendings))}</strong>
+                </div>
+                <div class="summary-box">
+                  <span>Balance</span>
+                  <strong class="${globalBalance < 0 ? "negative" : ""}">
+                    ${escapeHtml(money(globalBalance))}
+                  </strong>
+                </div>
+                <div class="summary-box">
+                  <span>Total Amount Owed to Users</span>
+                  <strong>${escapeHtml(money(totalOwed))}</strong>
+                </div>
+              </div>
+
+              <h3>Spending by Category</h3>
+              <p>Personal spending is intentionally excluded from this global summary.</p>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th class="amount">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${globalCategoryRows}
+                </tbody>
+              </table>
+            </section>
+
+            ${userSections}
+          </main>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    window.setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 250);
   };
 
   const savePassword = async () => {
@@ -1743,7 +2305,7 @@ if (error) {
                 Export CSV
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={printMonthlyReport}
                 className="px-4 py-2 rounded-xl border border-blue-200 bg-white text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
               >
                 Print Report
