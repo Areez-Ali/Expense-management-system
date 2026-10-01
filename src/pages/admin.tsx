@@ -98,25 +98,88 @@ type MonthOption = {
   label: string;
 };
 
-function getMonthOptions(count = 12): MonthOption[] {
+function getMonthOptions(
+  budgets: Budget[],
+  spendings: Spending[],
+): MonthOption[] {
   const now = new Date();
 
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(
-      now.getFullYear(),
-      now.getMonth() + index,
-      1,
-    );
+  const currentMonth = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1,
+  );
 
-    return {
-      month: date.getMonth() + 1,
-      year: date.getFullYear(),
-      label: date.toLocaleDateString("en-US", {
+  const dates: Date[] = [
+    // Keep previous 12 months available.
+    new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() - 12,
+      1,
+    ),
+
+    // Keep next 12 months available.
+    new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 12,
+      1,
+    ),
+  ];
+
+  // Include every month that exists in the budget data.
+  budgets.forEach((budget) => {
+    dates.push(
+      new Date(
+        budget.year,
+        budget.month - 1,
+        1,
+      ),
+    );
+  });
+
+  // Include every month that exists in spending data.
+  spendings.forEach((spending) => {
+    const date = new Date(`${spending.date}T00:00:00`);
+
+    dates.push(
+      new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        1,
+      ),
+    );
+  });
+
+  const earliest = new Date(
+    Math.min(...dates.map((date) => date.getTime())),
+  );
+
+  const latest = new Date(
+    Math.max(...dates.map((date) => date.getTime())),
+  );
+
+  const options: MonthOption[] = [];
+
+  const cursor = new Date(
+    earliest.getFullYear(),
+    earliest.getMonth(),
+    1,
+  );
+
+  while (cursor <= latest) {
+    options.push({
+      month: cursor.getMonth() + 1,
+      year: cursor.getFullYear(),
+      label: cursor.toLocaleDateString("en-US", {
         month: "long",
         year: "numeric",
       }),
-    };
-  });
+    });
+
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return options;
 }
 
 function formatMoney(value: number) {
@@ -146,7 +209,10 @@ function Admin({
   onBudgetsChange,
   onSpendingsChange,
 }: Props) {
-  const monthOptions = useMemo(() => getMonthOptions(12), []);
+  const monthOptions = useMemo(
+    () => getMonthOptions(budgets, spendings),
+    [budgets, spendings],
+  );
 
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0]);
 
