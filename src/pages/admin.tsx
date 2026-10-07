@@ -98,73 +98,11 @@ type MonthOption = {
   label: string;
 };
 
-function getMonthOptions(
-  budgets: Budget[],
-  spendings: Spending[],
-): MonthOption[] {
+function getMonthOptions(): MonthOption[] {
   const now = new Date();
-
-  const currentMonth = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    1,
-  );
-
-  const dates: Date[] = [
-    // Keep previous 12 months available.
-    new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth() - 12,
-      1,
-    ),
-
-    // Keep next 12 months available.
-    new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth() + 12,
-      1,
-    ),
-  ];
-
-  // Include every month that exists in the budget data.
-  budgets.forEach((budget) => {
-    dates.push(
-      new Date(
-        budget.year,
-        budget.month - 1,
-        1,
-      ),
-    );
-  });
-
-  // Include every month that exists in spending data.
-  spendings.forEach((spending) => {
-    const date = new Date(`${spending.date}T00:00:00`);
-
-    dates.push(
-      new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        1,
-      ),
-    );
-  });
-
-  const earliest = new Date(
-    Math.min(...dates.map((date) => date.getTime())),
-  );
-
-  const latest = new Date(
-    Math.max(...dates.map((date) => date.getTime())),
-  );
-
+  const cursor = new Date(2026, 8, 1);
+  const latest = new Date(now.getFullYear(), now.getMonth(), 1);
   const options: MonthOption[] = [];
-
-  const cursor = new Date(
-    earliest.getFullYear(),
-    earliest.getMonth(),
-    1,
-  );
 
   while (cursor <= latest) {
     options.push({
@@ -209,18 +147,23 @@ function Admin({
   onBudgetsChange,
   onSpendingsChange,
 }: Props) {
-  const monthOptions = useMemo(
-    () => getMonthOptions(budgets, spendings),
-    [budgets, spendings],
-  );
+  const monthOptions = useMemo(() => getMonthOptions(), []);
 
   const currentMonth = new Date();
-  const defaultMonth = monthOptions.find(
-    (option) =>
-      option.month === currentMonth.getMonth() + 1 &&
-      option.year === currentMonth.getFullYear(),
-  ) ?? monthOptions[monthOptions.length - 1];
-  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [selectedMonth, setSelectedMonth] = useState<MonthOption>(() =>
+    monthOptions.find(
+      (option) =>
+        option.month === currentMonth.getMonth() + 1 &&
+        option.year === currentMonth.getFullYear(),
+    ) ?? {
+      month: currentMonth.getMonth() + 1,
+      year: currentMonth.getFullYear(),
+      label: currentMonth.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
+    },
+  );
 
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -339,10 +282,14 @@ function Admin({
     (spending) => spending.userId === currentUser.id,
   );
 
-  const myBudget =
-    myOwnBudgets.reduce((sum, budget) => sum + budget.amount, 0) -
-    myAllocations.reduce((sum, budget) => sum + budget.amount, 0) +
+  const myTotalAllocatedBudget =
+    myOwnBudgets.reduce((sum, budget) => sum + budget.amount, 0) +
     myReceivedAllocations.reduce((sum, budget) => sum + budget.amount, 0);
+  const myTransferredToUsers = myAllocations.reduce(
+    (sum, budget) => sum + budget.amount,
+    0,
+  );
+  const myBudget = myTotalAllocatedBudget - myTransferredToUsers;
 
   const mySpending = mySpendings.reduce(
     (sum, spending) => sum + spending.amount,
@@ -519,19 +466,31 @@ function Admin({
     }
 
     if (budgetMode === "user") {
-      let availableToAllocate = Math.max(0, myBalance);
+      let availableToAllocate = myBudget;
 
-      if (
-        editingBudget &&
-        editingBudget.budgetType === "user_allocation" &&
-        editingBudget.allocatedBy === currentUser.id
-      ) {
-        availableToAllocate += editingBudget.amount;
+      if (editingBudget) {
+        if (
+          editingBudget.budgetType === "own" &&
+          editingBudget.userId === currentUser.id
+        ) {
+          availableToAllocate -= editingBudget.amount;
+        }
+
+        if (editingBudget.budgetType === "user_allocation") {
+          if (editingBudget.userId === currentUser.id) {
+            availableToAllocate -= editingBudget.amount;
+          }
+          if (editingBudget.allocatedBy === currentUser.id) {
+            availableToAllocate += editingBudget.amount;
+          }
+        }
       }
+
+      availableToAllocate = Math.max(0, availableToAllocate);
 
       if (amount > availableToAllocate) {
         alert(
-          `Insufficient amount. You only have ${formatMoney(availableToAllocate)} remaining available to allocate for ${selectedMonth.label}.`,
+          `Insufficient funds. You have ${formatMoney(availableToAllocate)} available to allocate for ${selectedMonth.label}.`,
         );
         return;
       }
@@ -939,7 +898,7 @@ function Admin({
     addSectionTitle(`MONTHLY SUMMARY — ${selectedMonth.label}`);
 
     csvRows.push(["Metric", "Amount"]);
-    csvRows.push(["Total Budget", String(totalBudget)]);
+    csvRows.push(["Total Funded Budget", String(totalBudget)]);
     csvRows.push(["Total Spendings", String(totalSpendings)]);
     csvRows.push(["Balance", String(globalBalance)]);
     csvRows.push([
@@ -1421,7 +1380,7 @@ function Admin({
 
               <div class="summary-grid">
                 <div class="summary-box">
-                  <span>Total Budget</span>
+                  <span>Total Funded Budget</span>
                   <strong>${escapeHtml(money(totalBudget))}</strong>
                 </div>
                 <div class="summary-box">
@@ -2250,11 +2209,17 @@ if (error) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
-            <SummaryCard title="My Available Budget" value={formatMoney(myBudget)} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mt-6">
+            <SummaryCard title="Total Allocated Budget" value={formatMoney(myTotalAllocatedBudget)} />
+            <SummaryCard title="Transferred to Users" value={formatMoney(myTransferredToUsers)} />
+            <SummaryCard
+              title="Available Budget"
+              value={formatMoney(myBudget)}
+              negative={myBudget < 0}
+            />
             <SummaryCard title="My Spending" value={formatMoney(mySpending)} />
             <SummaryCard
-              title="My Remaining Balance"
+              title="Remaining Balance"
               value={formatMoney(myBalance)}
               negative={myBalance < 0}
             />
@@ -2397,7 +2362,7 @@ if (error) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
             <SummaryCard
-              title="Total Budget"
+              title="Total Funded Budget"
               value={formatMoney(totalBudget)}
             />
             <SummaryCard
