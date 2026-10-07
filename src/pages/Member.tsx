@@ -677,7 +677,7 @@ function Member({
               Member Dashboard
             </p>
             <p className="text-sm font-medium text-blue-700">
-              {user.houseName ?? "Your household"}
+              {user.houseName ?? "Your house"}
             </p>
 
             <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">

@@ -1980,7 +1980,7 @@ if (error) {
               Administrator Dashboard
             </p>
             <p className="text-sm font-medium text-blue-700 mt-1">
-              {currentUser.houseName ?? "Your household"}
+              {currentUser.houseName ?? "Your house"}
             </p>
           </div>
 

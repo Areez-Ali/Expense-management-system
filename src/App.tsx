@@ -162,7 +162,7 @@ function App() {
       await supabase.auth.signOut();
       setCurrentUser(null);
       setUsers([]);
-      setError("This account is not assigned to a household. Ask an administrator to finish the household setup.");
+      setError("This account is not assigned to a house. Ask an administrator to finish the house setup.");
       return;
     }
 
