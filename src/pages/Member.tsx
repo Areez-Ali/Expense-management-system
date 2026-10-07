@@ -62,69 +62,13 @@ type MonthOption = {
   label: string;
 };
 
-function getMonthOptions(
-  budgets: Budget[],
-  spendings: Spending[],
-): MonthOption[] {
+function getMonthOptions(): MonthOption[] {
   const now = new Date();
-
-  const currentMonthStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    1,
-  );
-
-  const dataDates = [
-    ...budgets.map(
-      (budget) => new Date(budget.year, budget.month - 1, 1),
-    ),
-
-    ...spendings.map((spending) => {
-      const date = new Date(`${spending.date}T00:00:00`);
-
-      return new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        1,
-      );
-    }),
-  ];
-
-  // Always keep at least the previous 12 months available.
-  dataDates.push(
-    new Date(
-      currentMonthStart.getFullYear(),
-      currentMonthStart.getMonth() - 12,
-      1,
-    ),
-  );
-
-  // Always keep the next 12 months available.
-  dataDates.push(
-    new Date(
-      currentMonthStart.getFullYear(),
-      currentMonthStart.getMonth() + 11,
-      1,
-    ),
-  );
-
-  const earliestDate = new Date(
-    Math.min(...dataDates.map((date) => date.getTime())),
-  );
-
-  const latestDate = new Date(
-    Math.max(...dataDates.map((date) => date.getTime())),
-  );
-
+  const cursor = new Date(2026, 8, 1);
+  const latest = new Date(now.getFullYear(), now.getMonth(), 1);
   const options: MonthOption[] = [];
 
-  const cursor = new Date(
-    earliestDate.getFullYear(),
-    earliestDate.getMonth(),
-    1,
-  );
-
-  while (cursor <= latestDate) {
+  while (cursor <= latest) {
     options.push({
       month: cursor.getMonth() + 1,
       year: cursor.getFullYear(),
@@ -161,22 +105,29 @@ function Member({
   onBackHome,
   onSpendingsChange,
 }: Props) {
-  const monthOptions = useMemo(
-    () => getMonthOptions(budgets, spendings),
-    [budgets, spendings],
-  );
+  const monthOptions = useMemo(() => getMonthOptions(), []);
 
   const currentMonth = new Date();
-
-  const defaultMonth =
+  const [selectedMonth, setSelectedMonth] = useState<MonthOption>(() =>
     monthOptions.find(
       (option) =>
         option.month === currentMonth.getMonth() + 1 &&
         option.year === currentMonth.getFullYear(),
-    ) ?? monthOptions[monthOptions.length - 1];
+    ) ?? {
+      month: currentMonth.getMonth() + 1,
+      year: currentMonth.getFullYear(),
+      label: currentMonth.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
+    },
+  );
 
-  const [selectedMonth, setSelectedMonth] =
-    useState<MonthOption>(defaultMonth);
+  const [spendingSearch, setSpendingSearch] = useState("");
+  const [spendingTypeFilter, setSpendingTypeFilter] =
+    useState<SpendingType | "all">("all");
+  const [spendingFromDate, setSpendingFromDate] = useState("");
+  const [spendingToDate, setSpendingToDate] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -663,8 +614,30 @@ function Member({
     );
   });
 
-  const displayedSpendings = [...monthSpendings].sort(
-    (a, b) => b.date.localeCompare(a.date),
+  const hasSpendingFilters = Boolean(
+    spendingSearch.trim() ||
+      spendingTypeFilter !== "all" ||
+      spendingFromDate ||
+      spendingToDate,
+  );
+  const displayedSpendings = monthSpendings
+    .filter((spending) => {
+      const matchesSearch = spending.description
+        .toLocaleLowerCase()
+        .includes(spendingSearch.trim().toLocaleLowerCase());
+      const matchesType =
+        spendingTypeFilter === "all" ||
+        spending.type === spendingTypeFilter;
+      const matchesFrom =
+        !spendingFromDate || spending.date >= spendingFromDate;
+      const matchesTo = !spendingToDate || spending.date <= spendingToDate;
+
+      return matchesSearch && matchesType && matchesFrom && matchesTo;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const displayedSpendingTotal = displayedSpendings.reduce(
+    (sum, spending) => sum + spending.amount,
+    0,
   );
 
   return (
@@ -810,6 +783,67 @@ function Member({
             >
               + Add Spending
             </button>
+          </div>
+
+          <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="font-semibold text-slate-800">Search and filter spendings</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setSpendingSearch("");
+                  setSpendingTypeFilter("all");
+                  setSpendingFromDate("");
+                  setSpendingToDate("");
+                }}
+                disabled={!hasSpendingFilters}
+                className="self-start text-sm font-semibold text-blue-700 hover:text-blue-800 disabled:cursor-not-allowed disabled:text-slate-400 sm:self-auto"
+              >
+                Clear filters
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <input
+                type="search"
+                value={spendingSearch}
+                onChange={(event) => setSpendingSearch(event.target.value)}
+                placeholder="Search description"
+                aria-label="Search spending descriptions"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              />
+              <select
+                value={spendingTypeFilter}
+                onChange={(event) => setSpendingTypeFilter(event.target.value as SpendingType | "all")}
+                aria-label="Filter spending type"
+                className="min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="all">All Types</option>
+                {spendingTypes.map((spendingType) => (
+                  <option key={spendingType} value={spendingType}>{spendingType}</option>
+                ))}
+              </select>
+              <label className="text-xs font-medium text-slate-600">
+                From date
+                <input
+                  type="date"
+                  value={spendingFromDate}
+                  onChange={(event) => setSpendingFromDate(event.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+              <label className="text-xs font-medium text-slate-600">
+                To date
+                <input
+                  type="date"
+                  value={spendingToDate}
+                  onChange={(event) => setSpendingToDate(event.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </label>
+            </div>
+            <p className="mt-4 text-right font-bold text-slate-900">
+              {hasSpendingFilters ? "Filtered Spending Total" : "Total Spending"}: {formatMoney(displayedSpendingTotal)}
+            </p>
           </div>
 
           {/* DESKTOP TABLE */}

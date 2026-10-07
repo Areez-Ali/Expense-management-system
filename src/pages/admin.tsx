@@ -191,6 +191,7 @@ function Admin({
   const [filterMonth, setFilterMonth] = useState("selected");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
+  const [filterSearch, setFilterSearch] = useState("");
 
   const [editingSpendingId, setEditingSpendingId] = useState<number | null>(
     null,
@@ -229,6 +230,9 @@ function Admin({
 
   const filteredSpendings = spendings.filter((spending) => {
     const date = new Date(`${spending.date}T00:00:00`);
+    const matchesSearch = spending.description
+      .toLocaleLowerCase()
+      .includes(filterSearch.trim().toLocaleLowerCase());
     const matchesType = filterType === "all" || spending.type === filterType;
     const matchesUser = filterUserId === "all" || spending.userId === filterUserId;
     const matchesMonth =
@@ -241,10 +245,18 @@ function Admin({
         `${date.getFullYear()}-${date.getMonth() + 1}` === filterMonth);
     const matchesFrom = !filterFromDate || spending.date >= filterFromDate;
     const matchesTo = !filterToDate || spending.date <= filterToDate;
-    return matchesType && matchesUser && matchesMonth && matchesFrom && matchesTo;
+    return matchesSearch && matchesType && matchesUser && matchesMonth && matchesFrom && matchesTo;
   }).sort((a, b) => b.date.localeCompare(a.date));
 
   const filteredTotal = filteredSpendings.reduce((sum, item) => sum + item.amount, 0);
+  const hasSpendingFilters = Boolean(
+    filterSearch.trim() ||
+      filterType !== "all" ||
+      filterUserId !== "all" ||
+      filterMonth !== "selected" ||
+      filterFromDate ||
+      filterToDate,
+  );
 
   // An "own" budget creates money in the overall budget pool.
   // A "user_allocation" transfers money from the allocating admin to a user,
@@ -2189,7 +2201,7 @@ if (error) {
                 Budget Allocations
               </h2>
               <p className="text-slate-500 mt-1">
-                {selectedMonth.label} — your available budget and allocation history
+                Budget allocation for {selectedMonth.label}
               </p>
             </div>
 
@@ -2213,7 +2225,7 @@ if (error) {
             <SummaryCard title="Total Allocated Budget" value={formatMoney(myTotalAllocatedBudget)} />
             <SummaryCard title="Transferred to Users" value={formatMoney(myTransferredToUsers)} />
             <SummaryCard
-              title="Available Budget"
+              title="My Remaining Budget"
               value={formatMoney(myBudget)}
               negative={myBudget < 0}
             />
@@ -2248,7 +2260,7 @@ if (error) {
           <div className="mt-8 mb-5">
             <h3 className="text-lg font-bold text-slate-900">Allocation History</h3>
             <p className="text-slate-500 mt-1">
-              Budgets and money allocated for {selectedMonth.label}
+              Budget allocation for {selectedMonth.label}
             </p>
           </div>
 
@@ -2419,9 +2431,29 @@ if (error) {
         <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 mb-6 sm:mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
             <div><h2 className="text-lg sm:text-xl font-bold text-slate-900">Spending Filters</h2><p className="text-slate-500 mt-1">Filter spending across users, types, months and dates.</p></div>
-            <p className="font-bold text-slate-900">Filtered Total: {formatMoney(filteredTotal)}</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterSearch("");
+                  setFilterUserId("all");
+                  setFilterType("all");
+                  setFilterMonth("selected");
+                  setFilterFromDate("");
+                  setFilterToDate("");
+                }}
+                disabled={!hasSpendingFilters}
+                className="text-left text-sm font-semibold text-blue-700 hover:text-blue-800 disabled:cursor-not-allowed disabled:text-slate-400 sm:text-right"
+              >
+                Clear filters
+              </button>
+              <p className="font-bold text-slate-900">
+                {hasSpendingFilters ? "Filtered Spending Total" : "Total Spending"}: {formatMoney(filteredTotal)}
+              </p>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <input type="search" value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} placeholder="Search description" aria-label="Search spending descriptions" className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
             <select value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"><option value="all">All Users</option>{users.map((u) => <option key={u.id} value={u.id}>{u.name}{!u.active ? " (Inactive)" : ""}</option>)}</select>
             <select value={filterType} onChange={(e) => setFilterType(e.target.value as SpendingType | "all")} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"><option value="all">All Types</option>{spendingTypes.map((t) => <option key={t} value={t}>{t}</option>)}</select>
             <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
