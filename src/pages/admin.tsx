@@ -1,10 +1,10 @@
 import { useMemo, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type {
   Budget,
+  HouseholdRole,
   Spending,
   SpendingType,
   User,
-  UserRole,
 } from "../App";
 import { supabase } from "../lib/supabase";
 
@@ -53,11 +53,11 @@ type Props = {
     name: string;
     email: string;
     password: string;
-    role: UserRole;
+    role: HouseholdRole;
   }) => void | Promise<void>;
   onUpdateUser: (
     userId: string,
-    updates: Partial<User>,
+    updates: Partial<Pick<User, "active">> & { role?: HouseholdRole },
   ) => void | Promise<void>;
   onRemoveUser: (userId: string) => void | Promise<void>;
   onDeleteUser: (userId: string) => void | Promise<void>;
@@ -214,7 +214,13 @@ function Admin({
     [budgets, spendings],
   );
 
-  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0]);
+  const currentMonth = new Date();
+  const defaultMonth = monthOptions.find(
+    (option) =>
+      option.month === currentMonth.getMonth() + 1 &&
+      option.year === currentMonth.getFullYear(),
+  ) ?? monthOptions[monthOptions.length - 1];
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
 
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -231,7 +237,7 @@ function Admin({
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserRole, setNewUserRole] = useState<UserRole>("member");
+  const [newUserRole, setNewUserRole] = useState<HouseholdRole>("member");
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -564,6 +570,7 @@ function Admin({
         .from("budgets")
         .update({
           user_id: userId,
+          house_id: currentUser.houseId,
           amount,
           budget_type: budgetMode === "own" ? "own" : "user_allocation",
           source: budgetMode === "own" ? budgetSource.trim() : null,
@@ -575,7 +582,7 @@ function Admin({
         })
         .eq("id", editingBudget.id)
         .select(
-          "id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
+          "id, user_id, house_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
         )
         .single();
 
@@ -603,6 +610,7 @@ function Admin({
       const updatedBudget: Budget = {
         id: data.id,
         userId: data.user_id,
+        houseId: data.house_id ?? currentUser.houseId,
         month: data.month,
         year: data.year,
         amount: Number(data.amount),
@@ -628,6 +636,7 @@ function Admin({
       .from("budgets")
       .insert({
         user_id: userId,
+        house_id: currentUser.houseId,
         month: selectedMonth.month,
         year: selectedMonth.year,
         amount,
@@ -640,7 +649,7 @@ function Admin({
         budget_slip_file_type: budgetSlipFile?.type ?? null,
       })
       .select(
-        "id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
+        "id, user_id, house_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
       )
       .single();
 
@@ -655,6 +664,7 @@ function Admin({
     const newBudget: Budget = {
       id: data.id,
       userId: data.user_id,
+      houseId: data.house_id,
       month: data.month,
       year: data.year,
       amount: Number(data.amount),
@@ -1600,7 +1610,7 @@ if (error) {
         .update(updatePayload)
         .eq("id", editingSpendingId)
         .eq("user_id", currentUser.id)
-        .select("id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at")
+        .select("id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at")
         .single();
 
       if (error) {
@@ -1616,6 +1626,7 @@ if (error) {
       const updatedSpending: Spending = {
         id: data.id,
         userId: data.user_id,
+        houseId: data.house_id ?? currentUser.houseId,
         date: data.spending_date,
         description: data.description,
         quantity: data.quantity,
@@ -1637,13 +1648,14 @@ if (error) {
         .from("spendings")
         .insert({
           user_id: currentUser.id,
+          house_id: currentUser.houseId,
           spending_date: spendingDate,
           description: spendingDescription.trim(),
           quantity: spendingQuantity.trim(),
           type: spendingType,
           amount,
         })
-        .select("id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at")
+        .select("id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at")
         .single();
 
       if (error) {
@@ -1678,7 +1690,7 @@ if (error) {
           })
           .eq("id", data.id)
           .eq("user_id", currentUser.id)
-          .select("id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at")
+          .select("id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at")
           .single();
 
         if (fileUpdateError) {
@@ -1694,6 +1706,7 @@ if (error) {
       const newSpending: Spending = {
         id: data.id,
         userId: data.user_id,
+        houseId: data.house_id,
         date: data.spending_date,
         description: data.description,
         quantity: data.quantity,
@@ -2006,6 +2019,9 @@ if (error) {
 
             <p className="text-slate-500 mt-1">
               Administrator Dashboard
+            </p>
+            <p className="text-sm font-medium text-blue-700 mt-1">
+              {currentUser.houseName ?? "Your household"}
             </p>
           </div>
 
@@ -2714,7 +2730,7 @@ if (error) {
               <select
                 value={newUserRole}
                 onChange={(event) =>
-                  setNewUserRole(event.target.value as UserRole)
+                  setNewUserRole(event.target.value as HouseholdRole)
                 }
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               >

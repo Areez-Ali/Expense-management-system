@@ -374,7 +374,7 @@ function Member({
         .eq("id", editingId)
         .eq("user_id", user.id)
         .select(
-          "id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
+          "id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
         )
         .single();
 
@@ -412,7 +412,7 @@ function Member({
             .eq("id", editingId)
             .eq("user_id", user.id)
             .select(
-              "id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
+              "id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
             )
             .single();
 
@@ -442,6 +442,7 @@ function Member({
       const updatedSpending: Spending = {
         id: updatedData.id,
         userId: updatedData.user_id,
+        houseId: updatedData.house_id ?? user.houseId,
         date: updatedData.spending_date,
         description: updatedData.description,
         quantity: updatedData.quantity,
@@ -467,6 +468,7 @@ function Member({
         .from("spendings")
         .insert({
           user_id: user.id,
+          house_id: user.houseId,
           spending_date: date,
           description: description.trim(),
           quantity: quantity.trim(),
@@ -474,7 +476,7 @@ function Member({
           amount: numericAmount,
         })
         .select(
-          "id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
+          "id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
         )
         .single();
 
@@ -518,7 +520,7 @@ function Member({
             .eq("id", data.id)
             .eq("user_id", user.id)
             .select(
-              "id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
+              "id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
             )
             .single();
 
@@ -545,6 +547,7 @@ function Member({
       const newSpending: Spending = {
         id: updatedData.id,
         userId: updatedData.user_id,
+        houseId: updatedData.house_id,
         date: updatedData.spending_date,
         description: updatedData.description,
         quantity: updatedData.quantity,
@@ -672,6 +675,9 @@ function Member({
           <div>
             <p className="text-sm font-medium text-slate-500">
               Member Dashboard
+            </p>
+            <p className="text-sm font-medium text-blue-700">
+              {user.houseName ?? "Your household"}
             </p>
 
             <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">

@@ -1,15 +1,19 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Admin from "./pages/admin";
 import Member from "./pages/Member";
+import SuperAdmin from "./pages/superadmin";
 import { supabase } from "./lib/supabase";
 
-export type UserRole = "admin" | "member";
+export type UserRole = "super_admin" | "admin" | "member";
+export type HouseholdRole = Exclude<UserRole, "super_admin">;
 
 export type User = {
   id: string;
   name: string;
   role: UserRole;
   active: boolean;
+  houseId: string | null;
+  houseName?: string;
 };
 
 export type SpendingType =
@@ -27,6 +31,7 @@ export type SpendingType =
 export type Spending = {
   id: number;
   userId: string;
+  houseId?: string;
   date: string;
   description: string;
   quantity: string;
@@ -41,6 +46,7 @@ export type Spending = {
 export type Budget = {
   id: number;
   userId: string;
+  houseId?: string;
   month: number;
   year: number;
   amount: number;
@@ -53,14 +59,28 @@ export type Budget = {
   budgetSlipFileType?: string;
 };
 
-type Page = "home" | "admin" | "member";
+type Page = "home" | "superadmin" | "admin" | "member";
 type AuthFlow = "login" | "forgot" | "recovery";
+
+type RecoverySessionStatus = "checking" | "ready" | "missing";
+
+function isPasswordRecoveryUrl() {
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+  return (
+    search.get("reset") === "password" ||
+    search.get("type") === "recovery" ||
+    hash.get("type") === "recovery"
+  );
+}
 
 function getPageFromUrl(): Page {
   const page = new URLSearchParams(window.location.search).get("page");
 
   if (page === "admin") return "admin";
   if (page === "member") return "member";
+  if (page === "superadmin") return "superadmin";
   return "home";
 }
 
@@ -70,11 +90,14 @@ function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [page, setPage] = useState<Page>(getPageFromUrl());
   const [error, setError] = useState("");
+  const recoveryFlowActive = useRef(isPasswordRecoveryUrl());
   const [authFlow, setAuthFlow] = useState<AuthFlow>(
-    new URLSearchParams(window.location.search).get("reset") === "password"
-      ? "recovery"
-      : "login",
+    recoveryFlowActive.current ? "recovery" : "login",
   );
+  const [recoverySessionStatus, setRecoverySessionStatus] =
+    useState<RecoverySessionStatus>(
+      recoveryFlowActive.current ? "checking" : "missing",
+    );
 
   // Financial data is loaded from Supabase after authentication.
   const [spendings, setSpendings] = useState<Spending[]>([]);
@@ -99,7 +122,7 @@ function App() {
 
     const { data, error: profileError } = await supabase
       .from("profiles")
-      .select("id, name, role, active")
+      .select("id, name, role, active, house_id")
       .eq("id", userId)
       .single();
 
@@ -110,7 +133,13 @@ function App() {
       return;
     }
 
-    const profile = data as User;
+    const profile: User = {
+      id: data.id,
+      name: data.name,
+      role: data.role,
+      active: data.active,
+      houseId: data.house_id,
+    };
 
     if (!profile.active) {
       await supabase.auth.signOut();
@@ -120,6 +149,30 @@ function App() {
       return;
     }
 
+    if (profile.role === "super_admin") {
+      setCurrentUser(profile);
+      setUsers([]);
+      setBudgets([]);
+      setSpendings([]);
+      setPage("superadmin");
+      return;
+    }
+
+    if (!profile.houseId) {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setUsers([]);
+      setError("This account is not assigned to a household. Ask an administrator to finish the household setup.");
+      return;
+    }
+
+    const { data: houseRow } = await supabase
+      .from("households")
+      .select("name")
+      .eq("id", profile.houseId)
+      .maybeSingle();
+    profile.houseName = houseRow?.name;
+
     setCurrentUser(profile);
 
     // Load financial records from Supabase.
@@ -127,17 +180,19 @@ function App() {
     const { data: budgetRows, error: budgetsError } = await supabase
       .from("budgets")
       .select(
-        "id, user_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
+        "id, user_id, house_id, month, year, amount, source, budget_type, allocated_by, allocated_at, budget_slip_file_path, budget_slip_file_name, budget_slip_file_type",
       )
       .order("year", { ascending: true })
-      .order("month", { ascending: true });
+      .order("month", { ascending: true })
+      .eq("house_id", profile.houseId);
 
     const { data: spendingRows, error: spendingsError } = await supabase
       .from("spendings")
       .select(
-        "id, user_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
+        "id, user_id, house_id, spending_date, description, quantity, type, amount, bill_file_path, bill_file_name, bill_file_type, created_at",
       )
-      .order("spending_date", { ascending: true });
+      .order("spending_date", { ascending: true })
+      .eq("house_id", profile.houseId);
 
     if (budgetsError || spendingsError) {
       setBudgets([]);
@@ -152,6 +207,7 @@ function App() {
         (budgetRows ?? []).map((row) => ({
           id: row.id,
           userId: row.user_id,
+          houseId: row.house_id,
           month: row.month,
           year: row.year,
           amount: Number(row.amount),
@@ -169,6 +225,7 @@ function App() {
         (spendingRows ?? []).map((row) => ({
           id: row.id,
           userId: row.user_id,
+          houseId: row.house_id,
           date: row.spending_date,
           description: row.description,
           quantity: row.quantity,
@@ -185,21 +242,26 @@ function App() {
     // RLS allows admins to see all profiles and members to see their own profile.
     const { data: profileRows, error: usersError } = await supabase
       .from("profiles")
-      .select("id, name, role, active")
+      .select("id, name, role, active, house_id")
+      .eq("house_id", profile.houseId)
       .order("created_at", { ascending: true });
 
     if (usersError) {
       setUsers([profile]);
     } else {
-      setUsers((profileRows ?? []) as User[]);
+      setUsers(
+        (profileRows ?? []).map((row) => ({
+          id: row.id,
+          name: row.name,
+          role: row.role,
+          active: row.active,
+          houseId: row.house_id,
+          houseName: profile.houseName,
+        })) as User[],
+      );
     }
 
-    if (profile.role === "admin") {
-      const requestedPage = getPageFromUrl();
-      setPage(requestedPage === "member" ? "admin" : requestedPage);
-    } else {
-      setPage(getPageFromUrl() === "member" ? "member" : "home");
-    }
+    setPage(profile.role === "admin" ? "admin" : "member");
   };
 
   useEffect(() => {
@@ -207,8 +269,14 @@ function App() {
 
     const initialize = async () => {
       const isRecoveryRedirect =
-        new URLSearchParams(window.location.search).get("reset") ===
-        "password";
+        recoveryFlowActive.current || isPasswordRecoveryUrl();
+      if (isRecoveryRedirect) {
+        recoveryFlowActive.current = true;
+        setAuthFlow("recovery");
+        setRecoverySessionStatus("checking");
+        setCurrentUser(null);
+        setUsers([]);
+      }
 
       const { data } = await supabase.auth.getSession();
 
@@ -218,6 +286,20 @@ function App() {
         setAuthFlow("recovery");
         setCurrentUser(null);
         setUsers([]);
+        let recoverySession = data.session;
+
+        // The SDK processes the recovery URL during initialization. Recheck
+        // after that processing has settled before reporting a missing session.
+        if (!recoverySession?.user) {
+          await new Promise((resolve) => window.setTimeout(resolve, 250));
+          const { data: refreshedSession } = await supabase.auth.getSession();
+          recoverySession = refreshedSession.session;
+        }
+
+        if (!mounted) return;
+        setRecoverySessionStatus(
+          recoverySession?.user ? "ready" : "missing",
+        );
       } else if (data.session?.user) {
         await loadProfile(data.session.user.id);
       } else {
@@ -229,16 +311,26 @@ function App() {
       if (mounted) setSessionReady(true);
     };
 
-    void initialize();
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
+      if (event === "INITIAL_SESSION") return;
+
       if (event === "PASSWORD_RECOVERY") {
+        recoveryFlowActive.current = true;
         setAuthFlow("recovery");
+        setRecoverySessionStatus(
+          session?.user ? "ready" : "checking",
+        );
         setCurrentUser(null);
+        setUsers([]);
+        return;
+      }
+
+      if (recoveryFlowActive.current) {
+        if (session?.user) setRecoverySessionStatus("ready");
         return;
       }
 
@@ -249,8 +341,11 @@ function App() {
         setUsers([]);
         setPage("home");
         setAuthFlow("login");
+        setRecoverySessionStatus("missing");
       }
     });
+
+    void initialize();
 
     const handlePopState = () => {
       setPage(getPageFromUrl());
@@ -270,10 +365,19 @@ function App() {
     if (logoutError) setError(logoutError.message);
   };
 
+  const finishPasswordRecovery = async () => {
+    recoveryFlowActive.current = false;
+    await supabase.auth.signOut();
+    window.history.replaceState({}, "", window.location.pathname);
+    setRecoverySessionStatus("missing");
+    setError("");
+    setAuthFlow("login");
+  };
+
 
   const updateUser = async (
     userId: string,
-    updates: Partial<User>,
+    updates: Partial<Pick<User, "active">> & { role?: HouseholdRole },
   ): Promise<void> => {
     if (userId === currentUser?.id) {
       setError("You cannot change your own role.");
@@ -284,7 +388,7 @@ function App() {
       .from("profiles")
       .update(updates)
       .eq("id", userId)
-      .select("id, name, role, active")
+      .select("id, name, role, active, house_id")
       .single();
 
     if (updateError || !data) {
@@ -297,7 +401,14 @@ function App() {
       return;
     }
 
-    const updatedUser = data as User;
+    const updatedUser: User = {
+      id: data.id,
+      name: data.name,
+      role: data.role,
+      active: data.active,
+      houseId: data.house_id,
+      houseName: currentUser?.houseName,
+    };
 
     setUsers((current) =>
       current.map((user) =>
@@ -315,7 +426,7 @@ function App() {
     name: string;
     email: string;
     password: string;
-    role: UserRole;
+    role: HouseholdRole;
   }): Promise<void> => {
     const { data, error: functionError } = await supabase.functions.invoke(
       "create-user",
@@ -358,6 +469,8 @@ function App() {
       name: data.user.name,
       role: data.user.role,
       active: data.user.active,
+      houseId: currentUser?.houseId ?? data.user.house_id,
+      houseName: currentUser?.houseName,
     };
 
     setUsers((current) => [...current, newUser]);
@@ -372,7 +485,7 @@ function App() {
       .from("profiles")
       .update({ active: false })
       .eq("id", userId)
-      .select("id, name, role, active")
+      .select("id, name, role, active, house_id")
       .single();
 
     if (removeError || !data) {
@@ -380,7 +493,18 @@ function App() {
     }
 
     setUsers((current) =>
-      current.map((user) => (user.id === userId ? (data as User) : user)),
+      current.map((user) =>
+        user.id === userId
+          ? {
+              id: data.id,
+              name: data.name,
+              role: data.role,
+              active: data.active,
+              houseId: data.house_id,
+              houseName: currentUser?.houseName,
+            }
+          : user,
+      ),
     );
   };
 
@@ -436,11 +560,8 @@ function App() {
     if (authFlow === "recovery") {
       return (
         <UpdatePasswordScreen
-          onComplete={() => {
-            window.history.replaceState({}, "", window.location.pathname);
-            setError("");
-            setAuthFlow("login");
-          }}
+          recoverySessionStatus={recoverySessionStatus}
+          onComplete={finishPasswordRecovery}
         />
       );
     }
@@ -455,6 +576,11 @@ function App() {
         }}
       />
     );
+  }
+
+  // Super Admins remain on the global management dashboard for every page URL.
+  if (currentUser.role === "super_admin") {
+    return <SuperAdmin currentUser={currentUser} onLogout={handleLogout} />;
   }
 
   if (page === "admin") {
@@ -521,6 +647,11 @@ function App() {
             <p className="text-slate-500 mt-2">
               Welcome, {currentUser.name}
             </p>
+            {currentUser.houseName && (
+              <p className="text-sm font-medium text-blue-700 mt-1">
+                {currentUser.houseName}
+              </p>
+            )}
           </div>
 
           <button
@@ -701,7 +832,6 @@ function LoginScreen({
   );
 }
 
-
 function ForgotPasswordScreen({
   onBack,
 }: {
@@ -809,9 +939,11 @@ function ForgotPasswordScreen({
 }
 
 function UpdatePasswordScreen({
+  recoverySessionStatus,
   onComplete,
 }: {
-  onComplete: () => void;
+  recoverySessionStatus: RecoverySessionStatus;
+  onComplete: () => void | Promise<void>;
 }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -821,6 +953,15 @@ function UpdatePasswordScreen({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (recoverySessionStatus !== "ready") {
+      setError(
+        recoverySessionStatus === "checking"
+          ? "Please wait while we verify your reset link."
+          : "This password reset link is invalid or expired. Request a new one and try again.",
+      );
+      return;
+    }
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
@@ -849,8 +990,7 @@ function UpdatePasswordScreen({
     setSuccess(true);
 
     window.setTimeout(() => {
-      void supabase.auth.signOut();
-      onComplete();
+      void onComplete();
     }, 1200);
   };
 
@@ -868,6 +1008,21 @@ function UpdatePasswordScreen({
             Choose a new password for your account.
           </p>
         </div>
+
+        {recoverySessionStatus !== "ready" && (
+          <div
+            className={`mb-5 rounded-xl border p-4 text-sm ${
+              recoverySessionStatus === "checking"
+                ? "border-blue-200 bg-blue-50 text-blue-800"
+                : "border-amber-200 bg-amber-50 text-amber-800"
+            }`}
+            role="status"
+          >
+            {recoverySessionStatus === "checking"
+              ? "Verifying your password reset link…"
+              : "A recovery session could not be established. Request a new reset link."}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -912,12 +1067,28 @@ function UpdatePasswordScreen({
 
           <button
             type="submit"
-            disabled={loading || success}
+            disabled={loading || success || recoverySessionStatus !== "ready"}
             className="w-full bg-slate-900 text-white rounded-xl py-3 font-semibold disabled:opacity-60"
           >
-            {loading ? "Updating..." : "Update Password"}
+            {loading
+              ? "Updating..."
+              : recoverySessionStatus === "checking"
+                ? "Verifying reset link..."
+                : recoverySessionStatus === "missing"
+                  ? "Reset link unavailable"
+                  : "Update Password"}
           </button>
         </form>
+
+        {recoverySessionStatus === "missing" && (
+          <button
+            type="button"
+            onClick={() => void onComplete()}
+            className="mt-4 w-full text-sm font-semibold text-slate-700 hover:underline"
+          >
+            Back to Sign In
+          </button>
+        )}
       </div>
     </div>
   );
