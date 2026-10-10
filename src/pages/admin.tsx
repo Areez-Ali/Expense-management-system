@@ -7,6 +7,7 @@ import type {
   User,
 } from "../App";
 import { supabase } from "../lib/supabase";
+import { sortBudgetsNewestFirst, sortSpendingsNewestFirst } from "../lib/transactionSorting";
 
 
 async function viewBill(path: string) {
@@ -228,7 +229,7 @@ function Admin({
     );
   });
 
-  const filteredSpendings = spendings.filter((spending) => {
+  const filteredSpendings = sortSpendingsNewestFirst(spendings.filter((spending) => {
     const date = new Date(`${spending.date}T00:00:00`);
     const matchesSearch = spending.description
       .toLocaleLowerCase()
@@ -246,7 +247,7 @@ function Admin({
     const matchesFrom = !filterFromDate || spending.date >= filterFromDate;
     const matchesTo = !filterToDate || spending.date <= filterToDate;
     return matchesSearch && matchesType && matchesUser && matchesMonth && matchesFrom && matchesTo;
-  }).sort((a, b) => b.date.localeCompare(a.date));
+  }));
 
   const filteredTotal = filteredSpendings.reduce((sum, item) => sum + item.amount, 0);
   const hasSpendingFilters = Boolean(
@@ -875,13 +876,7 @@ function Admin({
     // 1. Budget Allocation
     addSectionTitle(`BUDGET ALLOCATION — ${selectedMonth.label}`);
 
-    const budgetRows = monthBudgets
-      .slice()
-      .sort((a, b) => {
-        const aTime = a.allocatedAt ? new Date(a.allocatedAt).getTime() : 0;
-        const bTime = b.allocatedAt ? new Date(b.allocatedAt).getTime() : 0;
-        return aTime - bTime;
-      })
+    const budgetRows = sortBudgetsNewestFirst(monthBudgets)
       .map((budget) => [
         getUserName(budget.userId),
         budget.budgetType === "own" ? "Own Budget" : "User Allocation",
@@ -936,10 +931,9 @@ function Admin({
     // 3. Separate spending report for every user
     users.forEach((user) => {
       const financials = getUserFinancials(user.id);
-      const userSpendings = monthSpendings
-        .filter((spending) => spending.userId === user.id)
-        .slice()
-        .sort((a, b) => b.date.localeCompare(a.date));
+      const userSpendings = sortSpendingsNewestFirst(
+        monthSpendings.filter((spending) => spending.userId === user.id),
+      );
 
       addSectionTitle(`SPENDING — ${user.name}`);
 
@@ -1039,13 +1033,7 @@ function Admin({
       0,
     );
 
-    const budgetRows = monthBudgets
-      .slice()
-      .sort((a, b) => {
-        const aTime = a.allocatedAt ? new Date(a.allocatedAt).getTime() : 0;
-        const bTime = b.allocatedAt ? new Date(b.allocatedAt).getTime() : 0;
-        return aTime - bTime;
-      })
+    const budgetRows = sortBudgetsNewestFirst(monthBudgets)
       .map(
         (budget) => `
           <tr>
@@ -1082,10 +1070,9 @@ function Admin({
       .map((user) => {
         const financials = getUserFinancials(user.id);
 
-        const userSpendings = monthSpendings
-          .filter((spending) => spending.userId === user.id)
-          .slice()
-          .sort((a, b) => b.date.localeCompare(a.date));
+        const userSpendings = sortSpendingsNewestFirst(
+          monthSpendings.filter((spending) => spending.userId === user.id),
+        );
 
         const userCategoryRows = spendingTypes
           .map((category) => {
@@ -1755,9 +1742,7 @@ if (error) {
                 </thead>
 
                 <tbody>
-                  {selectedCategorySpendings
-                    .slice()
-                    .sort((a, b) => b.date.localeCompare(a.date))
+                  {sortSpendingsNewestFirst(selectedCategorySpendings)
                     .map((spending) => (
                       <tr
                         key={spending.id}
@@ -1902,9 +1887,7 @@ if (error) {
                 </thead>
 
                 <tbody>
-                  {selectedUserSpendings
-                    .slice()
-                    .sort((a, b) => b.date.localeCompare(a.date))
+                  {sortSpendingsNewestFirst(selectedUserSpendings)
                     .map((spending) => (
                       <tr
                         key={spending.id}
@@ -2279,7 +2262,7 @@ if (error) {
                 </tr>
               </thead>
               <tbody>
-                {monthBudgets.map((budget) => (
+                {sortBudgetsNewestFirst(monthBudgets).map((budget) => (
                   <tr key={budget.id} className="border-b last:border-0">
                     <td className="py-4 font-semibold">{getUserName(budget.userId)}</td>
                     <td className="py-4">

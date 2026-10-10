@@ -12,6 +12,7 @@ import type {
   User,
 } from "../App";
 import { supabase } from "../lib/supabase";
+import { sortSpendingsNewestFirst } from "../lib/transactionSorting";
 
 async function viewBill(path: string) {
   const { data, error } = await supabase.storage
@@ -620,7 +621,7 @@ function Member({
       spendingFromDate ||
       spendingToDate,
   );
-  const displayedSpendings = monthSpendings
+  const displayedSpendings = sortSpendingsNewestFirst(monthSpendings
     .filter((spending) => {
       const matchesSearch = spending.description
         .toLocaleLowerCase()
@@ -633,8 +634,7 @@ function Member({
       const matchesTo = !spendingToDate || spending.date <= spendingToDate;
 
       return matchesSearch && matchesType && matchesFrom && matchesTo;
-    })
-    .sort((a, b) => b.date.localeCompare(a.date));
+    }));
   const displayedSpendingTotal = displayedSpendings.reduce(
     (sum, spending) => sum + spending.amount,
     0,
