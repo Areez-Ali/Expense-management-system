@@ -451,6 +451,20 @@ function Admin({
   const saveBudget = async () => {
     const amount = Number(budgetAmount);
 
+    if (editingBudgetId === null) {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      if (
+        selectedMonth.month !== currentMonth ||
+        selectedMonth.year !== currentYear
+      ) {
+        alert("New budgets can only be added for the current month.");
+        return;
+      }
+    }
+
     if (!amount || amount <= 0) {
       alert("Please enter a valid amount.");
       return;

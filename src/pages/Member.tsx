@@ -12,7 +12,12 @@ import type {
   User,
 } from "../App";
 import { supabase } from "../lib/supabase";
-import { sortSpendingsNewestFirst } from "../lib/transactionSorting";
+import {
+  calculateMemberTransactionBalances,
+  doesBudgetAffectMonthBalance,
+  isBudgetPeriodConsistent,
+  sortSpendingsNewestFirst,
+} from "../lib/transactionSorting";
 
 async function viewBill(path: string) {
   const { data, error } = await supabase.storage
@@ -147,6 +152,17 @@ function Member({
       budget.year === selectedMonth.year,
   );
 
+  const userBudgets = budgets.filter((budget) => budget.userId === user.id);
+  const selectedMonthBalanceUnavailable = userBudgets.some(
+    (budget) =>
+      !isBudgetPeriodConsistent(budget) &&
+      doesBudgetAffectMonthBalance(
+        budget,
+        selectedMonth.month,
+        selectedMonth.year,
+      ),
+  );
+
   const monthSpendings = spendings.filter((spending) => {
     const spendingDate = new Date(`${spending.date}T00:00:00`);
 
@@ -219,9 +235,11 @@ function Member({
     })
     .reduce((sum, spending) => sum + spending.amount, 0);
 
-  const balance = cumulativeBudget - cumulativeSpendings;
+  const balance = selectedMonthBalanceUnavailable
+    ? null
+    : cumulativeBudget - cumulativeSpendings;
 
-  const amountOwedToUser = Math.max(0, -balance);
+  const amountOwedToUser = balance === null ? 0 : Math.max(0, -balance);
 
   const categoryTotals = spendingTypes.map((category) => ({
     category,
@@ -406,6 +424,7 @@ function Member({
           updatedData.bill_file_name ?? undefined,
         billFileType:
           updatedData.bill_file_type ?? undefined,
+        createdAt: updatedData.created_at ?? undefined,
       };
 
       onSpendingsChange((current) =>
@@ -511,6 +530,7 @@ function Member({
           updatedData.bill_file_name ?? undefined,
         billFileType:
           updatedData.bill_file_type ?? undefined,
+        createdAt: updatedData.created_at ?? undefined,
       };
 
       onSpendingsChange((current) => [
@@ -596,24 +616,14 @@ function Member({
   const carriedForwardBalance =
     previousBudget - previousSpendings;
 
-  const chronologicalSpendings = [...monthSpendings].sort(
-    (a, b) => a.date.localeCompare(b.date),
+  const remainingById = calculateMemberTransactionBalances(
+    monthBudgets,
+    monthSpendings,
+    carriedForwardBalance,
   );
-
-  const remainingById = new Map<number, number>();
-
-  let runningSpent = 0;
-
-  chronologicalSpendings.forEach((spending) => {
-    runningSpent += spending.amount;
-
-    remainingById.set(
-      spending.id,
-      carriedForwardBalance +
-        totalBudget -
-        runningSpent,
-    );
-  });
+  if (selectedMonthBalanceUnavailable) {
+    monthSpendings.forEach((spending) => remainingById.set(spending.id, null));
+  }
 
   const hasSpendingFilters = Boolean(
     spendingSearch.trim() ||
@@ -706,7 +716,11 @@ function Member({
         <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:grid-cols-2 lg:grid-cols-3">
           <SummaryCard
             title="Total Budget"
-            value={formatMoney(totalBudget)}
+            value={
+              selectedMonthBalanceUnavailable
+                ? "Unavailable"
+                : formatMoney(totalBudget)
+            }
           />
 
           <SummaryCard
@@ -716,18 +730,24 @@ function Member({
 
           <SummaryCard
             title={
-              balance < 0
+              balance === null
+                ? "Balance Unavailable"
+                : balance < 0
                 ? "Amount Owed to You"
                 : "Remaining Balance"
             }
-            value={formatMoney(
-              balance < 0 ? amountOwedToUser : balance,
-            )}
-            negative={balance < 0}
+            value={
+              balance === null
+                ? "Unavailable"
+                : formatMoney(
+                    balance < 0 ? amountOwedToUser : balance,
+                  )
+            }
+            negative={balance !== null && balance < 0}
           />
         </div>
 
-        {balance < 0 && (
+        {balance !== null && balance < 0 && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 sm:mb-8">
             You are owed {formatMoney(amountOwedToUser)} because
             your spending is higher than your allocated budget.
@@ -868,10 +888,7 @@ function Member({
 
               <tbody>
                 {displayedSpendings.map((spending) => {
-                  const remaining =
-                    remainingById.get(spending.id) ??
-                    carriedForwardBalance +
-                      totalBudget;
+                  const remaining = remainingById.get(spending.id);
 
                   return (
                     <tr
@@ -923,12 +940,12 @@ function Member({
 
                       <td
                         className={`py-4 pr-4 text-right font-bold whitespace-nowrap ${
-                          remaining < 0
+                          remaining != null && remaining < 0
                             ? "text-red-600"
                             : "text-slate-900"
                         }`}
                       >
-                        {formatMoney(remaining)}
+                        {remaining == null ? "Unavailable" : formatMoney(remaining)}
                       </td>
 
                       <td className="py-4">
@@ -964,10 +981,7 @@ function Member({
           {/* MOBILE / TABLET CARDS */}
           <div className="space-y-3 lg:hidden">
             {displayedSpendings.map((spending) => {
-              const remaining =
-                remainingById.get(spending.id) ??
-                carriedForwardBalance +
-                  totalBudget;
+              const remaining = remainingById.get(spending.id);
 
               return (
                 <div
@@ -1018,12 +1032,12 @@ function Member({
 
                       <p
                         className={`mt-1 text-sm font-bold ${
-                          remaining < 0
+                          remaining != null && remaining < 0
                             ? "text-red-600"
                             : "text-slate-900"
                         }`}
                       >
-                        {formatMoney(remaining)}
+                        {remaining == null ? "Unavailable" : formatMoney(remaining)}
                       </p>
                     </div>
 
